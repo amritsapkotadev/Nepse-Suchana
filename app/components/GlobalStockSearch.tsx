@@ -1,16 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import StockDetailModal from './Stockdetailmodal';
-interface Stock {
-  symbol: string;
-  name: string;
-  securityName: string;
-  lastTradedPrice: number;
-  change: number;
-  changePercent: number;
-  turnover: number;
-}
+import StockDetailModal, { type Stock } from './Stockdetailmodal';
 
 interface GlobalStockSearchProps {
   allStocks: Stock[];
