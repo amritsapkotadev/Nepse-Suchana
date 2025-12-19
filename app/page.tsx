@@ -8,6 +8,13 @@ interface Stock {
   change: number;
   changePercent: number;
   turnover: number;
+  sector?: string;
+  openPrice?: number;
+  highPrice?: number;
+  lowPrice?: number;
+  previousClose?: number;
+  totalTradeQuantity?: number;
+  iconUrl?: string;
 }
 
 interface MarketSummary {
@@ -37,6 +44,12 @@ interface LiveCompanyData {
   percentageChange: number;
   totalTradeValue: number;
   sector?: string;
+  openPrice?: number;
+  highPrice?: number;
+  lowPrice?: number;
+  previousClose?: number;
+  totalTradeQuantity?: number;
+  iconUrl?: string;
 }
 
 interface ApiResponse {
@@ -109,9 +122,6 @@ export default async function Home() {
   const totalVolume = nepseData.marketSummary?.find(m => m.name === 'Total Traded Shares')?.value || 0;
   const gainers = nepseData.stockSummary?.advanced || 0;
   const losers = nepseData.stockSummary?.declined || 0;
-  const topStocks = nepseData.topTurnover?.slice(0, 15) || [];
-  const topGainers = nepseData.topGainers?.slice(0, 10) || [];
-  const topLosers = nepseData.topLosers?.slice(0, 10) || [];
   
   // Convert all live company data to Stock format for search
   const allStocks: Stock[] = nepseData.liveCompanyData?.map(company => ({
@@ -120,8 +130,24 @@ export default async function Home() {
     lastTradedPrice: company.lastTradedPrice,
     change: company.change,
     changePercent: company.percentageChange,
-    turnover: company.totalTradeValue
+    turnover: company.totalTradeValue,
+    sector: company.sector,
+    openPrice: company.openPrice,
+    highPrice: company.highPrice,
+    lowPrice: company.lowPrice,
+    previousClose: company.previousClose,
+    totalTradeQuantity: company.totalTradeQuantity,
+    iconUrl: company.iconUrl
   })) || [];
+
+  // Enrich top gainers and losers with full stock data
+  const enrichStock = (stock: Stock): Stock => {
+    const fullData = allStocks.find(s => s.symbol === stock.symbol);
+    return fullData || stock;
+  };
+
+  const topGainers = nepseData.topGainers?.slice(0, 10).map(enrichStock) || [];
+  const topLosers = nepseData.topLosers?.slice(0, 10).map(enrichStock) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -177,9 +203,6 @@ export default async function Home() {
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Stocks down today</p>
           </div>
         </div>
-
-        {/* Top Stocks by Turnover */}
-        <StockTable stocks={topStocks} title="Top Stocks by Turnover" showName={true} showTurnover={true} />
 
         {/* Top Gainers and Losers */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
