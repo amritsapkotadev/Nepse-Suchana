@@ -1,18 +1,18 @@
 'use client';
 
-interface Stock {
+export interface Stock {
   symbol: string;
-  securityName: string;
-  lastTradedPrice?: number;
-  change?: number;
-  percentageChange?: number;
-  totalTradeValue?: number;
-  totalTradeQuantity?: number;
+  name: string;
+  lastTradedPrice: number;
+  change: number;
+  changePercent: number;
+  turnover: number;
+  sector?: string;
   openPrice?: number;
   highPrice?: number;
   lowPrice?: number;
   previousClose?: number;
-  sector: string;
+  totalTradeQuantity?: number;
   iconUrl?: string;
 }
 
@@ -24,81 +24,148 @@ interface StockDetailModalProps {
 export default function StockDetailModal({ stock, onClose }: StockDetailModalProps) {
   if (!stock) return null;
 
-  const isPositive = (stock.change ?? 0) >= 0;
+  const isPositive = stock.change >= 0;
 
-  const formatNumber = (num?: number) => (num ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
-  const formatCrore = (num?: number) => ((num ?? 0) / 10000000).toFixed(2);
+  const formatNumber = (num?: number) =>
+    (num ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+  const formatCrore = (num?: number) =>
+    ((num ?? 0) / 1e7).toFixed(2);
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-3xl w-full overflow-y-auto"
+        className="w-full max-w-3xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className={`flex justify-between items-center p-6 rounded-t-2xl ${isPositive ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
-          <div className="flex items-center gap-3">
-            {stock.iconUrl && <img src={stock.iconUrl} alt={stock.symbol} className="w-10 h-10 rounded-full" />}
+        {/* HEADER */}
+        <div
+          className={`flex items-center justify-between p-6 border-b ${
+            isPositive
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+          }`}
+        >
+          <div className="flex items-center gap-4">
+            {stock.iconUrl && (
+              <img
+                src={`https://sharepulse.qzz.io/${stock.iconUrl}`}
+                alt={stock.symbol}
+                className="w-12 h-12 rounded-full border border-slate-300 dark:border-slate-700"
+              />
+            )}
             <div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{stock.symbol}</h2>
-                <h2 className="text-sm text-slate-600 dark:text-slate-400">{stock.sector}</h2>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                {stock.symbol}
+              </h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {stock.name}
+              </p>
+              {stock.sector && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Sector: {stock.sector}
+                </p>
+              )}
             </div>
           </div>
+
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-2xl font-bold"
+            className="text-2xl font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
           >
             ×
           </button>
         </div>
 
-        {/* Price Overview */}
-        <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-700">
+        {/* PRICE SECTION */}
+        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
           <div>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Current Price</p>
-            <p className="text-4xl font-bold text-slate-900 dark:text-white">Rs {formatNumber(stock.lastTradedPrice)}</p>
+            <p className="text-sm text-slate-500 mb-1">Current Price</p>
+            <p className="text-4xl font-bold text-slate-900 dark:text-white">
+              Rs {formatNumber(stock.lastTradedPrice)}
+            </p>
           </div>
-          <div className={`text-2xl font-semibold ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-            {isPositive ? '+' : ''}{(stock.change ?? 0).toFixed(2)} ({isPositive ? '+' : ''}{(stock.percentageChange ?? 0).toFixed(2)}%)
+
+          <div
+            className={`text-right text-xl font-semibold ${
+              isPositive
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-red-600 dark:text-red-400'
+            }`}
+          >
+            {isPositive ? '+' : ''}
+            {stock.change.toFixed(2)} <br />
+            <span className="text-sm">
+              ({isPositive ? '+' : ''}
+              {stock.changePercent.toFixed(2)}%)
+            </span>
           </div>
         </div>
 
-        {/* Trading Stats */}
-        <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Total Trade Value */}
-          <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Trade Value</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white">Rs {formatCrore(stock.totalTradeValue)} Cr</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Volume: {formatNumber(stock.totalTradeQuantity)}</p>
-          </div>
+        {/* STATS GRID */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+          <StatCard
+            label="Total Turnover"
+            value={`Rs ${formatCrore(stock.turnover)} Cr`}
+            sub={`Volume: ${formatNumber(stock.totalTradeQuantity)}`}
+          />
 
-          {/* High / Low */}
-          <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Day High / Low</p>
-            <p className="text-lg font-bold text-slate-900 dark:text-white">Rs {formatNumber(stock.highPrice)} / Rs {formatNumber(stock.lowPrice)}</p>
-          </div>
+          <StatCard
+            label="Day High / Low"
+            value={`Rs ${formatNumber(stock.highPrice)} / ${formatNumber(stock.lowPrice)}`}
+          />
 
-          {/* Previous Close / Open */}
-          <div className="bg-slate-50 dark:bg-slate-900/20 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Previous Close / Open</p>
-            <p className="text-lg font-bold text-slate-900 dark:text-white">Rs {formatNumber(stock.previousClose)} / Rs {formatNumber(stock.openPrice)}</p>
-          </div>
+          <StatCard
+            label="Prev Close / Open"
+            value={`Rs ${formatNumber(stock.previousClose)} / ${formatNumber(stock.openPrice)}`}
+          />
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-between items-center p-6 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/20 rounded-b-2xl">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Data refreshed: {new Date().toLocaleTimeString()}</p>
+        {/* FOOTER */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40">
+          <p className="text-xs text-slate-500">
+            Last updated: {new Date().toLocaleTimeString()}
+          </p>
+
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-800 dark:hover:bg-slate-600 transition"
+            className="rounded-lg bg-slate-900 dark:bg-slate-700 px-4 py-2 text-white text-sm hover:opacity-90 transition"
           >
             Close
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ---------------------------------- */
+/* Reusable Stat Card */
+/* ---------------------------------- */
+
+function StatCard({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-4 shadow-sm">
+      <p className="text-xs font-medium text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+        {value}
+      </p>
+      {sub && (
+        <p className="mt-1 text-xs text-slate-400">
+          {sub}
+        </p>
+      )}
     </div>
   );
 }
