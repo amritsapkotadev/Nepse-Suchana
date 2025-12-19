@@ -1,3 +1,6 @@
+import StockTable from './components/StockTable';
+import GlobalStockSearch from './components/GlobalStockSearch';
+
 interface Stock {
   symbol: string;
   name: string;
@@ -26,6 +29,16 @@ interface Index {
   changePercent: number;
 }
 
+interface LiveCompanyData {
+  symbol: string;
+  securityName: string;
+  lastTradedPrice: number;
+  change: number;
+  percentageChange: number;
+  totalTradeValue: number;
+  sector?: string;
+}
+
 interface ApiResponse {
   marketSummary: MarketSummary[];
   stockSummary: StockSummary;
@@ -33,6 +46,7 @@ interface ApiResponse {
   topTurnover: Stock[];
   topGainers: Stock[];
   topLosers: Stock[];
+  liveCompanyData: LiveCompanyData[];
 }
 
 async function getNepseData(): Promise<ApiResponse | null> {
@@ -98,6 +112,16 @@ export default async function Home() {
   const topStocks = nepseData.topTurnover?.slice(0, 15) || [];
   const topGainers = nepseData.topGainers?.slice(0, 10) || [];
   const topLosers = nepseData.topLosers?.slice(0, 10) || [];
+  
+  // Convert all live company data to Stock format for search
+  const allStocks: Stock[] = nepseData.liveCompanyData?.map(company => ({
+    symbol: company.symbol,
+    name: company.securityName,
+    lastTradedPrice: company.lastTradedPrice,
+    change: company.change,
+    changePercent: company.percentageChange,
+    turnover: company.totalTradeValue
+  })) || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
@@ -114,6 +138,11 @@ export default async function Home() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Global Search */}
+        <GlobalStockSearch 
+          allStocks={allStocks}
+        />
+
         {/* Market Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border border-slate-200 dark:border-slate-700">
@@ -149,103 +178,13 @@ export default async function Home() {
           </div>
         </div>
 
-       
+        {/* Top Stocks by Turnover */}
+        <StockTable stocks={topStocks} title="Top Stocks by Turnover" showName={true} showTurnover={true} />
 
         {/* Top Gainers and Losers */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-          {/* Top Gainers */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Top Gainers</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 dark:bg-slate-900">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Symbol
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      LTP
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Change
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {topGainers.length > 0 ? (
-                    topGainers.map((stock) => (
-                      <tr key={stock.symbol} className="hover:bg-slate-50 dark:hover:bg-slate-750">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
-                          {stock.symbol}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900 dark:text-white">
-                          Rs {stock.lastTradedPrice.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-green-600 dark:text-green-400 font-semibold">
-                          +{stock.changePercent.toFixed(2)}%
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={3} className="px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">
-                        No data available
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Top Losers */}
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Top Losers</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-slate-50 dark:bg-slate-900">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Symbol
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      LTP
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Change
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                  {topLosers.length > 0 ? (
-                    topLosers.map((stock) => (
-                      <tr key={stock.symbol} className="hover:bg-slate-50 dark:hover:bg-slate-750">
-                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
-                          {stock.symbol}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-900 dark:text-white">
-                          Rs {stock.lastTradedPrice.toLocaleString()}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600 dark:text-red-400 font-semibold">
-                          {stock.changePercent.toFixed(2)}%
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={3} className="px-4 py-3 text-center text-sm text-slate-500 dark:text-slate-400">
-                        No data available
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <StockTable stocks={topGainers} title="Top Gainers" showName={false} showTurnover={false} />
+          <StockTable stocks={topLosers} title="Top Losers" showName={false} showTurnover={false} />
         </div>
 
         {/* Footer Note */}
