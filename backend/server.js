@@ -2,14 +2,19 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const db = require('./src/config/databasesetup');
-
+const authRoutes = require('./src/Routes/AuthRoute');
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Middleware
+// Middleware - MUST be before routes
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// Routes
+app.use('/api/auth', authRoutes);
+
+// Health check route
 app.get('/api/health', async (req, res) => {
   try {
     const result = await db.query('SELECT NOW()');
