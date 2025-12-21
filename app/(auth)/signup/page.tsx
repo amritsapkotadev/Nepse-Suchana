@@ -10,25 +10,34 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-
+    setLoading(true);
     try {
-      // Add your registration logic here
-      console.log('Signup attempt:', { name, email, password });
-      
-      // Example: redirect after successful signup
-      // router.push('/login');
+      const res = await fetch('http://localhost:3001/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: name, password, email })
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        // Redirect to login after successful signup
+        router.push('/login');
+      } else {
+        setError(data.message || 'Signup failed. Please try again.');
+      }
     } catch (err) {
       setError('Signup failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -142,9 +151,10 @@ export default function Signup() {
 
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition shadow-lg hover:shadow-xl"
+              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-slate-800 transition shadow-lg hover:shadow-xl disabled:opacity-60"
+              disabled={loading}
             >
-              Create Account
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 

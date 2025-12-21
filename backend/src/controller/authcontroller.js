@@ -36,16 +36,15 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
   try {
     const result = await db.query(
-      'SELECT id, username, email, created_at FROM users WHERE username = $1 AND password_hash = $2',
-      [username, password]
+      'SELECT id, username, email, created_at FROM users WHERE email = $1 AND password_hash = $2',
+      [email, password]
     );
-
-    if (result.rows.length > 0) {               
-      res.json({  
+    if (result.rows.length > 0) {
+      res.json({
         status: 'success',
         message: 'Login successful',
         user: result.rows[0]
@@ -53,7 +52,7 @@ const login = async (req, res) => {
     } else {
       res.status(401).json({
         status: 'error',
-        message: 'Invalid username or password'
+        message: 'Invalid email or password'
       });
     }
   } catch (error) {
