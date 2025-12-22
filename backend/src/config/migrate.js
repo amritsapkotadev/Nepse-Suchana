@@ -18,10 +18,17 @@ async function runMigrations() {
       path.join(__dirname, '../models/usermodel.sql'),
       'utf8'
     );
-    
     await pool.query(userModelSQL);
     console.log('✓ Users table created successfully');
-    
+
+    // Read and execute the portfolio model SQL
+    const portfolioModelSQL = fs.readFileSync(
+      path.join(__dirname, '../models/portfolio.sql'),
+      'utf8'
+    );
+    await pool.query(portfolioModelSQL);
+    console.log('✓ Portfolio table created successfully');
+
     console.log('✓ All migrations completed successfully');
     await pool.end();
     process.exit(0);
