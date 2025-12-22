@@ -12,7 +12,6 @@ async function getAllStocks() {
   }));
 }
 
-export default async function PortfolioPage() {
-  const allStocks = await getAllStocks();
-  return <PortfolioClient allStocks={allStocks} />;
+export default function PortfolioPage() {
+  return <PortfolioClient />;
 }
