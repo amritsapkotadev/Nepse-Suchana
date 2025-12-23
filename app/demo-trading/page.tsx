@@ -12,7 +12,7 @@ interface Trade {
   date: Date;
 }
 
-const NEPSE_API_URL = process.env.NEXT_PUBLIC_NEPSE_API_URL || "";
+const NEPSE_API_URL = process.env.NEXT_PUBLIC_NEPSE_API_URL || "https://sharepulse.qzz.io/api/nepse/live-data";
 
 export default function DemoTrading() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -20,6 +20,8 @@ export default function DemoTrading() {
   const [profitLoss, setProfitLoss] = useState(0);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
   const [allStocks, setAllStocks] = useState<any[]>([]);
 
   // Calculate profit/loss
@@ -97,18 +99,66 @@ export default function DemoTrading() {
       <form onSubmit={handleAdd} className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white">Buy Stock (Demo)</h2>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium mb-2">Symbol *</label>
-            <select name="symbol" value={form.symbol} onChange={e => {
-              const stock = demoStocks.find(s => s.symbol === e.target.value);
-              setForm(prev => ({ ...prev, symbol: e.target.value, companyName: stock?.companyName || "" }));
-            }} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl">
-              <option value="">Select symbol</option>
-              {allStocks.map(stock => (
-                <option key={stock.symbol} value={stock.symbol}>{stock.symbol} - {stock.securityName}</option>
-              ))}
-            </select>
+            <input
+              name="symbol"
+              value={form.symbol}
+              onChange={async e => {
+                setForm(prev => ({ ...prev, symbol: e.target.value }));
+                setShowSuggestions(true);
+                const query = e.target.value.toLowerCase();
+                try {
+                  const res = await fetch(NEPSE_API_URL);
+                  if (!res.ok) throw new Error("Failed to fetch stocks");
+                  const data = await res.json();
+                  const stocks = data.liveCompanyData || [];
+                  if (!query) {
+                    setSuggestions(stocks.slice(0, 20));
+                  } else {
+                    setSuggestions(
+                      stocks.filter(stock =>
+                        stock.symbol.toLowerCase().startsWith(query) ||
+                        stock.securityName.toLowerCase().startsWith(query)
+                      ).slice(0, 20)
+                    );
+                  }
+                } catch (err) {
+                  setSuggestions([]);
+                }
+              }}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl"
+              placeholder="Type symbol or company name..."
+              autoComplete="off"
+              required
+              onFocus={() => {
+                if (allStocks.length > 0) {
+                  setSuggestions(allStocks.slice(0, 20));
+                  setShowSuggestions(true);
+                }
+              }}
+            />
+            {/* Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl max-h-64 overflow-y-auto">
+                {suggestions.map(stock => (
+                  <div
+                    key={stock.symbol}
+                    className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 border-slate-100 dark:border-slate-800"
+                    onMouseDown={() => {
+                      setForm(prev => ({ ...prev, symbol: stock.symbol, companyName: stock.securityName }));
+                      setSuggestions([]);
+                      setShowSuggestions(false);
+                    }}
+                  >
+                    <span className="font-bold text-blue-600 dark:text-blue-400">{stock.symbol}</span>
+                    <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">{stock.securityName}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
           <div>
             <label className="block text-sm font-medium mb-2">Company Name *</label>
             <input name="companyName" value={form.companyName} readOnly className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl" />
