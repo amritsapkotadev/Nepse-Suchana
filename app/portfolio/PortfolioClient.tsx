@@ -382,6 +382,12 @@ export default function NepsePortfolio() {
                 Dashboard
               </Link>
               <Link 
+                href="/demo-trading" 
+                className="px-4 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-300 hover:text-indigo-700 dark:hover:text-indigo-400 transition-colors"
+              >
+                Demo Trading
+              </Link>
+              <Link 
                 href="/" 
                 className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium hover:shadow-lg transition-all"
               >
