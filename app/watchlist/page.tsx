@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+const NEPSE_API_URL = "/api/nepse-proxy";
+
 import Link from 'next/link';
 
 interface WatchlistStock {
@@ -21,6 +23,25 @@ export default function Watchlist() {
     targetPrice: '',
     notes: ''
   });
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allStocks, setAllStocks] = useState<any[]>([]);
+  const symbolInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch all stocks on mount
+  useEffect(() => {
+    const fetchStocks = async () => {
+      try {
+        const res = await fetch(NEPSE_API_URL);
+        if (!res.ok) throw new Error("Failed to fetch stocks");
+        const data = await res.json();
+        setAllStocks(data.liveCompanyData || []);
+      } catch (err) {
+        setAllStocks([]);
+      }
+    };
+    fetchStocks();
+  }, []);
 
   const handleAddStock = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,18 +104,60 @@ export default function Watchlist() {
             <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Add Stock to Watchlist</h2>
             <form onSubmit={handleAddStock} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                     Stock Symbol *
                   </label>
                   <input
+                    ref={symbolInputRef}
                     type="text"
                     value={formData.symbol}
-                    onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
+                    onChange={e => {
+                      setFormData({ ...formData, symbol: e.target.value });
+                      setShowSuggestions(true);
+                      const query = e.target.value.toLowerCase();
+                      if (!query) {
+                        setSuggestions(allStocks.slice(0, 10));
+                      } else {
+                        setSuggestions(
+                          allStocks.filter(stock =>
+                            stock.symbol.toLowerCase().includes(query) ||
+                            stock.securityName.toLowerCase().includes(query)
+                          ).slice(0, 10)
+                        );
+                      }
+                    }}
+                    onFocus={() => {
+                      if (allStocks.length > 0) {
+                        setSuggestions(allStocks.slice(0, 10));
+                        setShowSuggestions(true);
+                      }
+                    }}
                     className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     placeholder="e.g., NABIL"
                     required
+                    autoComplete="off"
                   />
+                  {/* Suggestions Dropdown */}
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl shadow-2xl max-h-64 overflow-y-auto">
+                      {suggestions.map(stock => (
+                        <div
+                          key={stock.symbol}
+                          className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 border-slate-100 dark:border-slate-800"
+                          onMouseDown={() => {
+                            setFormData({ ...formData, symbol: stock.symbol, companyName: stock.securityName });
+                            setSuggestions([]);
+                            setShowSuggestions(false);
+                            setTimeout(() => symbolInputRef.current?.blur(), 100);
+                          }}
+                        >
+                          <span className="font-bold text-blue-600 dark:text-blue-400">{stock.symbol}</span>
+                          <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">{stock.securityName}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
@@ -103,10 +166,11 @@ export default function Watchlist() {
                   <input
                     type="text"
                     value={formData.companyName}
-                    onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                    onChange={e => setFormData({ ...formData, companyName: e.target.value })}
                     className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     placeholder="e.g., Nabil Bank Limited"
                     required
+                    readOnly={!!formData.symbol}
                   />
                 </div>
                 <div>
