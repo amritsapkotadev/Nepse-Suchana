@@ -12,7 +12,7 @@ interface Trade {
   date: Date;
 }
 
-const NEPSE_API_URL = process.env.NEXT_PUBLIC_NEPSE_API_URL || "https://sharepulse.qzz.io/api/nepse/live-data";
+const NEPSE_API_URL = "/api/nepse-proxy";
 
 export default function DemoTrading() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -20,9 +20,24 @@ export default function DemoTrading() {
   const [profitLoss, setProfitLoss] = useState(0);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
-    const [suggestions, setSuggestions] = useState<any[]>([]);
-    const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [allStocks, setAllStocks] = useState<any[]>([]);
+
+  // Fetch all stocks on mount for instant suggestions
+  useEffect(() => {
+    const fetchStocks = async () => {
+      try {
+        const res = await fetch(NEPSE_API_URL);
+        if (!res.ok) throw new Error("Failed to fetch stocks");
+        const data = await res.json();
+        setAllStocks(data.liveCompanyData || []);
+      } catch (err) {
+        setAllStocks([]);
+      }
+    };
+    fetchStocks();
+  }, []);
 
   // Calculate profit/loss
   const calculatePL = () => {
@@ -43,7 +58,7 @@ export default function DemoTrading() {
       setError("All fields are required.");
       return;
     }
-    const stock = demoStocks.find(s => s.symbol === symbol);
+    const stock = allStocks.find(s => s.symbol === symbol);
     if (!stock) {
       setError("Invalid stock symbol.");
       return;
@@ -54,7 +69,7 @@ export default function DemoTrading() {
       companyName,
       quantity: Number(quantity),
       buyPrice: Number(buyPrice),
-      currentPrice: stock.currentPrice,
+      currentPrice: stock.closingPrice || stock.ltp || 0,
       date: new Date(),
     };
     setTrades(prev => [...prev, newTrade]);
@@ -104,27 +119,19 @@ export default function DemoTrading() {
             <input
               name="symbol"
               value={form.symbol}
-              onChange={async e => {
+              onChange={e => {
                 setForm(prev => ({ ...prev, symbol: e.target.value }));
                 setShowSuggestions(true);
                 const query = e.target.value.toLowerCase();
-                try {
-                  const res = await fetch(NEPSE_API_URL);
-                  if (!res.ok) throw new Error("Failed to fetch stocks");
-                  const data = await res.json();
-                  const stocks = data.liveCompanyData || [];
-                  if (!query) {
-                    setSuggestions(stocks.slice(0, 20));
-                  } else {
-                    setSuggestions(
-                      stocks.filter(stock =>
-                        stock.symbol.toLowerCase().startsWith(query) ||
-                        stock.securityName.toLowerCase().startsWith(query)
-                      ).slice(0, 20)
-                    );
-                  }
-                } catch (err) {
-                  setSuggestions([]);
+                if (!query) {
+                  setSuggestions(allStocks.slice(0, 20));
+                } else {
+                  setSuggestions(
+                    allStocks.filter(stock =>
+                      stock.symbol.toLowerCase().includes(query) ||
+                      stock.securityName.toLowerCase().includes(query)
+                    ).slice(0, 20)
+                  );
                 }
               }}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl"

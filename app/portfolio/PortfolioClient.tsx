@@ -24,7 +24,7 @@ interface PortfolioStock {
   dateAdded: Date;
 }
 
-const NEPSE_API_URL = process.env.NEXT_PUBLIC_NEPSE_API_URL || "";
+const NEPSE_API_URL = "/api/nepse-proxy";
 
 export default function NepsePortfolio() {
   const [portfolio, setPortfolio] = useState<PortfolioStock[]>(() => {
@@ -85,11 +85,16 @@ export default function NepsePortfolio() {
     try {
       const res = await fetch(NEPSE_API_URL);
       if (!res.ok) {
-        setError("Failed to fetch stocks from NEPSE API. Please check the API endpoint and CORS settings.");
+        setError(`Failed to fetch stocks from NEPSE API. Status: ${res.status} ${res.statusText}`);
         setAllStocks([]);
         return;
       }
       const data = await res.json();
+      if (!data.liveCompanyData) {
+        setError("API response does not contain liveCompanyData. Check the API format.");
+        setAllStocks([]);
+        return;
+      }
       const stocks = (data.liveCompanyData || []).map((c: any) => ({ 
         symbol: c.symbol, 
         name: c.securityName,
@@ -99,7 +104,7 @@ export default function NepsePortfolio() {
       }));
       setAllStocks(stocks);
     } catch (error) {
-      setError("Failed to fetch stocks. Please check your internet connection or try again later.");
+      setError("Failed to fetch stocks. Please check your internet connection or try again later. See console for details.");
       setAllStocks([]);
       console.error('Failed to fetch stocks:', error);
     }
