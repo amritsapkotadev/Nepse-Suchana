@@ -20,7 +20,7 @@ interface PortfolioStock {
   quantity: number;
   buyPrice: number;
   transactionType: "Buy" | "Sell";
-  currentPrice?: number;
+  lastTradedPrice?: number;
   dateAdded: Date;
 }
 
@@ -98,7 +98,7 @@ export default function NepsePortfolio() {
       const stocks = (data.liveCompanyData || []).map((c: any) => ({ 
         symbol: c.symbol, 
         name: c.securityName,
-        currentPrice: c.closingPrice || c.ltp || 0,
+        currentPrice:  c.currentprice, 
         change: c.change || 0,
         changePercent: c.changePercent || 0
       }));
@@ -333,16 +333,15 @@ export default function NepsePortfolio() {
     let totalCurrentValue = 0;
     let totalShares = 0;
 
-    holdings.forEach(holding => {
-      if (holding.totalQuantity > 0) {
-        totalInvestment += holding.totalInvestment;
-        totalShares += holding.totalQuantity;
-        
-        // Get current price from allStocks or use avg price as fallback
-        const stockInfo = allStocks.find(s => s.symbol === Array.from(holdings.keys()).find(k => k));
-        const currentPrice = stockInfo?.currentPrice || holding.avgBuyPrice;
-        totalCurrentValue += holding.totalQuantity * currentPrice;
-      }
+      holdings.forEach(holding => {
+        if (holding.totalQuantity > 0) {
+          totalInvestment += holding.totalInvestment;
+          totalShares += holding.totalQuantity;
+          // Find the correct stock info for this symbol
+          const stockInfo = allStocks.find(s => s.symbol === Array.from(holdings.keys()).find(k => k));
+           const ltp = stockInfo?.lastTradedPrice ?? stockInfo?.currentPrice ?? holding.avgBuyPrice;
+          totalCurrentValue += holding.totalQuantity * ltp;
+        }
     });
 
     const profitLoss = totalCurrentValue - totalInvestment;
@@ -420,6 +419,24 @@ export default function NepsePortfolio() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                  {/* Profit/Loss Section */}
+                  <div className="max-w-2xl mx-auto mb-8">
+                    <div className={`rounded-2xl shadow-lg border-2 p-6 flex items-center justify-between ${metrics.profitLoss >= 0 ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-900/40' : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-900/40'}`}>
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-xl ${metrics.profitLoss >= 0 ? 'bg-emerald-100 dark:bg-emerald-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                          <FaChartLine className={`w-7 h-7 ${metrics.profitLoss >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`} />
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold text-slate-900 dark:text-white mb-1">Profit &amp; Loss</p>
+                          <p className={`text-2xl font-bold ${metrics.profitLoss >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>{metrics.profitLoss >= 0 ? '+' : '-'}Rs. {Math.abs(metrics.profitLoss).toLocaleString('en-NP', { minimumFractionDigits: 2 })}</p>
+                          <span className={`text-sm font-medium px-2 py-1 rounded-full ${metrics.profitLoss >= 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>{metrics.profitLossPercentage >= 0 ? '+' : '-'}{Math.abs(metrics.profitLossPercentage).toFixed(2)}%</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Unrealized gains/losses</p>
+                      </div>
+                    </div>
+                  </div>
           {/* Total Investment Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -914,7 +931,7 @@ export default function NepsePortfolio() {
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  Transaction History
+                  Transaction 
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   {portfolio.length} transaction{portfolio.length !== 1 ? 's' : ''} recorded
@@ -932,6 +949,8 @@ export default function NepsePortfolio() {
                     <option value="transactionType">Type</option>
                     <option value="quantity">Quantity</option>
                     <option value="buyPrice">Price</option>
+                    <option value="lastTradedPrice">Price</option>
+
                   </select>
                   <button
                     onClick={() => {
@@ -977,34 +996,24 @@ export default function NepsePortfolio() {
               <table className="w-full">
                 <thead className="bg-slate-50 dark:bg-slate-900/50">
                   <tr>
-                    {[
-                      { key: 'dateAdded', label: 'Date' },
-                      { key: 'symbol', label: 'Symbol' },
-                      { key: 'companyName', label: 'Company' },
-                      { key: 'transactionType', label: 'Type' },
-                      { key: 'quantity', label: 'Quantity' },
-                      { key: 'buyPrice', label: 'Price' },
-                      { key: 'buyPrice', label: 'Total Value' },
-                      { key: 'actions', label: 'Actions' }
-                    ].map(({ key, label }) => (
-                      <th
-                        key={key}
-                        className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:text-slate-700 dark:hover:text-slate-300 transition-colors"
-                        onClick={() => key !== 'actions' && handleSort(key as keyof PortfolioStock)}
-                      >
-                        <div className="flex items-center">
-                          {label}
-                          {key !== 'actions' && getSortIcon(key as keyof PortfolioStock)}
-                        </div>
-                      </th>
-                    ))}
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Symbol</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Company</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Price</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Current Price</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Value</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {sortedPortfolio.map((stock) => {
                     const totalValue = stock.quantity * stock.buyPrice;
                     const currentOwned = getTotalOwnedShares(stock.symbol);
-                    
+                    // Find latest price for this symbol
+                    const stockInfo = allStocks.find(s => s.symbol === stock.symbol);
+                    const currentPrice = stockInfo?.lastTradedPrice ?? stockInfo?.currentPrice ?? stock.buyPrice;
                     return (
                       <motion.tr
                         key={stock.id}
@@ -1069,8 +1078,13 @@ export default function NepsePortfolio() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-slate-900 dark:text-white">
+                            Rs. {currentPrice.toLocaleString('en-NP', { minimumFractionDigits: 2 })}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
                           <div className="text-sm font-bold text-slate-900 dark:text-white">
-                            Rs. {totalValue.toLocaleString('en-NP', { minimumFractionDigits: 2 })}
+                            Rs. {(stock.quantity * currentPrice).toLocaleString('en-NP', { minimumFractionDigits: 2 })}
                           </div>
                         </td>
                         <td className="px-6 py-4">
