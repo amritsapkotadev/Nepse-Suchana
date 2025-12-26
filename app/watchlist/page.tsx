@@ -1,9 +1,24 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-const NEPSE_API_URL = "/api/nepse-proxy";
-
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
+import { 
+  FaTrash, 
+  FaPlus, 
+  FaRegStickyNote, 
+  FaBullseye, 
+  FaArrowUp, 
+  FaArrowDown,
+  FaSearch,
+  FaChartLine,
+  FaFilter,
+  FaTimes,
+  FaEdit,
+  FaSortAmountDown,
+  FaSortAmountUp
+} from 'react-icons/fa';
+
+const NEPSE_API_URL = "/api/nepse-proxy";
 
 interface WatchlistStock {
   id: string;
@@ -13,6 +28,9 @@ interface WatchlistStock {
   notes?: string;
   addedAt: Date;
 }
+
+type SortField = 'symbol' | 'price' | 'change' | 'target' | 'added';
+type SortDirection = 'asc' | 'desc';
 
 export default function Watchlist() {
   const [watchlist, setWatchlist] = useState<WatchlistStock[]>([]);
@@ -26,7 +44,13 @@ export default function Watchlist() {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [allStocks, setAllStocks] = useState<any[]>([]);
+  const [liveMap, setLiveMap] = useState<Record<string, any>>({});
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField>('symbol');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [editingStock, setEditingStock] = useState<string | null>(null);
   const symbolInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Fetch all stocks on mount
   useEffect(() => {
@@ -36,11 +60,33 @@ export default function Watchlist() {
         if (!res.ok) throw new Error("Failed to fetch stocks");
         const data = await res.json();
         setAllStocks(data.liveCompanyData || []);
+        const map: Record<string, any> = {};
+        (data.liveCompanyData || []).forEach((s: any) => { 
+          map[s.symbol] = s; 
+        });
+        setLiveMap(map);
       } catch (err) {
+        console.error('Error fetching stocks:', err);
         setAllStocks([]);
+        setLiveMap({});
       }
     };
     fetchStocks();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchStocks, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleAddStock = (e: React.FormEvent) => {
@@ -55,56 +101,268 @@ export default function Watchlist() {
       addedAt: new Date()
     };
 
-    setWatchlist([...watchlist, newStock]);
+    setWatchlist([newStock, ...watchlist]);
     setFormData({ symbol: '', companyName: '', targetPrice: '', notes: '' });
     setShowAddForm(false);
+    setShowSuggestions(false);
   };
 
   const handleRemoveStock = (id: string) => {
     setWatchlist(watchlist.filter(stock => stock.id !== id));
   };
 
+  const handleEditStock = (id: string) => {
+    const stock = watchlist.find(s => s.id === id);
+    if (stock) {
+      setFormData({
+        symbol: stock.symbol,
+        companyName: stock.companyName,
+        targetPrice: stock.targetPrice?.toString() || '',
+        notes: stock.notes || ''
+      });
+      setEditingStock(id);
+      setShowAddForm(true);
+    }
+  };
+
+  const handleUpdateStock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingStock) return;
+
+    setWatchlist(watchlist.map(stock => 
+      stock.id === editingStock ? {
+        ...stock,
+        symbol: formData.symbol.toUpperCase(),
+        companyName: formData.companyName,
+        targetPrice: formData.targetPrice ? parseFloat(formData.targetPrice) : undefined,
+        notes: formData.notes || undefined
+      } : stock
+    ));
+
+    setFormData({ symbol: '', companyName: '', targetPrice: '', notes: '' });
+    setEditingStock(null);
+    setShowAddForm(false);
+  };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const filteredAndSortedStocks = useMemo(() => {
+    let filtered = watchlist.filter(stock => 
+      stock.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      stock.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      stock.notes?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return filtered.sort((a, b) => {
+      const aLive = liveMap[a.symbol];
+      const bLive = liveMap[b.symbol];
+      const aPrice = aLive?.lastTradedPrice ?? aLive?.currentPrice ?? 0;
+      const bPrice = bLive?.lastTradedPrice ?? bLive?.currentPrice ?? 0;
+      const aChange = aLive?.change ?? 0;
+      const bChange = bLive?.change ?? 0;
+
+      let comparison = 0;
+      switch (sortField) {
+        case 'symbol':
+          comparison = a.symbol.localeCompare(b.symbol);
+          break;
+        case 'price':
+          comparison = aPrice - bPrice;
+          break;
+        case 'change':
+          comparison = aChange - bChange;
+          break;
+        case 'target':
+          comparison = (a.targetPrice || 0) - (b.targetPrice || 0);
+          break;
+        case 'added':
+          comparison = new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+          break;
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [watchlist, searchQuery, sortField, sortDirection, liveMap]);
+
+  const totalStocks = watchlist.length;
+  const targetsReached = watchlist.filter(stock => {
+    const live = liveMap[stock.symbol];
+    const ltp = live?.lastTradedPrice ?? live?.currentPrice;
+    return ltp && stock.targetPrice && ltp >= stock.targetPrice;
+  }).length;
+
+  const getPriceChangeColor = (change: number) => {
+    if (change > 0) return 'text-emerald-600 dark:text-emerald-400';
+    if (change < 0) return 'text-red-600 dark:text-red-400';
+    return 'text-slate-500 dark:text-slate-400';
+  };
+
+  const getPriceChangeBg = (change: number) => {
+    if (change > 0) return 'bg-emerald-50 dark:bg-emerald-900/20';
+    if (change < 0) return 'bg-red-50 dark:bg-red-900/20';
+    return 'bg-slate-50 dark:bg-slate-800';
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-slate-900">
       {/* Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-10">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Link 
                 href="/" 
-                className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
+                <span className="hidden sm:inline text-slate-600 dark:text-slate-400">Back</span>
               </Link>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Watchlist</h1>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Track your favorite stocks</p>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Stock Watchlist
+                </h1>
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  Track and manage your favorite stocks
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold text-sm shadow-lg transition-all"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Stock
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all"
+              >
+                <FaPlus className="w-4 h-4" /> 
+                <span className="hidden sm:inline">Add Stock</span>
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Add Stock Form */}
-        {showAddForm && (
-          <div className="mb-6 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-6">
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white mb-4">Add Stock to Watchlist</h2>
-            <form onSubmit={handleAddStock} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="relative">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Total Stocks</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalStocks}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                <FaChartLine className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Targets Reached</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{targetsReached}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
+                <FaBullseye className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow border border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Target Progress</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {watchlist.length > 0 
+                    ? `${Math.round(watchlist.filter(stock => {
+                        const live = liveMap[stock.symbol];
+                        const ltp = live?.lastTradedPrice ?? live?.currentPrice;
+                        return ltp && stock.targetPrice;
+                      }).length / watchlist.length * 100)}%`
+                    : '0%'}
+                </p>
+              </div>
+              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                <FaArrowUp className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search and Filter Bar */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search stocks by symbol, name, or notes..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <FaTimes className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <div className="relative">
+              <button
+                className="px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300"
+              >
+                <FaFilter className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Sort Controls */}
+        <div className="mb-6 flex flex-wrap gap-2">
+          {(['symbol', 'price', 'change', 'target', 'added'] as SortField[]).map((field) => (
+            <button
+              key={field}
+              onClick={() => handleSort(field)}
+              className={`px-4 py-2 rounded-lg transition-colors ${sortField === field ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+            >
+              <div className="flex items-center gap-2 capitalize">
+                {field}
+                {sortField === field && (
+                  sortDirection === 'asc' ? <FaSortAmountUp /> : <FaSortAmountDown />
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Add/Edit Stock Form */}
+        {(showAddForm || editingStock) && (
+          <div className="mb-8 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                {editingStock ? 'Edit Stock' : 'Add New Stock'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAddForm(false);
+                  setEditingStock(null);
+                  setFormData({ symbol: '', companyName: '', targetPrice: '', notes: '' });
+                }}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <FaTimes className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={editingStock ? handleUpdateStock : handleAddStock} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="relative" ref={suggestionsRef}>
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
                     Stock Symbol *
                   </label>
@@ -114,47 +372,63 @@ export default function Watchlist() {
                     value={formData.symbol}
                     onChange={e => {
                       setFormData({ ...formData, symbol: e.target.value });
-                      setShowSuggestions(true);
                       const query = e.target.value.toLowerCase();
                       if (!query) {
-                        setSuggestions(allStocks.slice(0, 10));
+                        setSuggestions([]);
                       } else {
                         setSuggestions(
                           allStocks.filter(stock =>
                             stock.symbol.toLowerCase().includes(query) ||
                             stock.securityName.toLowerCase().includes(query)
-                          ).slice(0, 10)
+                          ).slice(0, 8)
                         );
                       }
                     }}
                     onFocus={() => {
-                      if (allStocks.length > 0) {
-                        setSuggestions(allStocks.slice(0, 10));
-                        setShowSuggestions(true);
+                      if (allStocks.length > 0 && formData.symbol) {
+                        const query = formData.symbol.toLowerCase();
+                        setSuggestions(
+                          allStocks.filter(stock =>
+                            stock.symbol.toLowerCase().includes(query) ||
+                            stock.securityName.toLowerCase().includes(query)
+                          ).slice(0, 8)
+                        );
                       }
                     }}
                     className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    placeholder="e.g., NABIL"
+                    placeholder="Type symbol or company name..."
                     required
                     autoComplete="off"
                   />
-                  {/* Suggestions Dropdown */}
-                  {showSuggestions && suggestions.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl shadow-2xl max-h-64 overflow-y-auto">
+                  {suggestions.length > 0 && (
+                    <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
                       {suggestions.map(stock => (
-                        <div
+                        <button
                           key={stock.symbol}
-                          className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 border-slate-100 dark:border-slate-800"
-                          onMouseDown={() => {
-                            setFormData({ ...formData, symbol: stock.symbol, companyName: stock.securityName });
+                          type="button"
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 border-slate-100 dark:border-slate-800"
+                          onClick={() => {
+                            setFormData({ 
+                              ...formData, 
+                              symbol: stock.symbol, 
+                              companyName: stock.securityName 
+                            });
                             setSuggestions([]);
-                            setShowSuggestions(false);
-                            setTimeout(() => symbolInputRef.current?.blur(), 100);
                           }}
                         >
-                          <span className="font-bold text-blue-600 dark:text-blue-400">{stock.symbol}</span>
-                          <span className="ml-2 text-sm text-slate-600 dark:text-slate-400">{stock.securityName}</span>
-                        </div>
+                          <div className="font-bold text-blue-600 dark:text-blue-400">{stock.symbol}</div>
+                          <div className="text-sm text-slate-600 dark:text-slate-400 truncate">
+                            {stock.securityName}
+                          </div>
+                          {liveMap[stock.symbol] && (
+                            <div className="text-xs mt-1">
+                              <span className="font-medium">Rs. {liveMap[stock.symbol].lastTradedPrice}</span>
+                              <span className={`ml-2 ${getPriceChangeColor(liveMap[stock.symbol].change)}`}>
+                                {liveMap[stock.symbol].change >= 0 ? '+' : ''}{liveMap[stock.symbol].change}%
+                              </span>
+                            </div>
+                          )}
+                        </button>
                       ))}
                     </div>
                   )}
@@ -168,9 +442,8 @@ export default function Watchlist() {
                     value={formData.companyName}
                     onChange={e => setFormData({ ...formData, companyName: e.target.value })}
                     className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    placeholder="e.g., Nabil Bank Limited"
+                    placeholder="Company name"
                     required
-                    readOnly={!!formData.symbol}
                   />
                 </div>
                 <div>
@@ -183,7 +456,7 @@ export default function Watchlist() {
                     value={formData.targetPrice}
                     onChange={(e) => setFormData({ ...formData, targetPrice: e.target.value })}
                     className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    placeholder="e.g., 1200"
+                    placeholder="Enter target price"
                   />
                 </div>
                 <div>
@@ -195,20 +468,32 @@ export default function Watchlist() {
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                    placeholder="Why are you watching this?"
+                    placeholder="Add notes or reasoning..."
                   />
                 </div>
               </div>
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all shadow-lg"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold transition-all shadow-lg hover:shadow-xl flex items-center gap-2"
                 >
-                  Add to Watchlist
+                  {editingStock ? (
+                    <>
+                      <FaEdit /> Update Stock
+                    </>
+                  ) : (
+                    <>
+                      <FaPlus /> Add to Watchlist
+                    </>
+                  )}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowAddForm(false)}
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setEditingStock(null);
+                    setFormData({ symbol: '', companyName: '', targetPrice: '', notes: '' });
+                  }}
                   className="px-6 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-semibold transition-all"
                 >
                   Cancel
@@ -218,69 +503,149 @@ export default function Watchlist() {
           </div>
         )}
 
-        {/* Watchlist Display */}
-        {watchlist.length === 0 ? (
+        {/* Watchlist Grid */}
+        {filteredAndSortedStocks.length === 0 ? (
           <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 mb-4">
-              <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 mb-6">
+              <svg className="w-12 h-12 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No Stocks in Watchlist</h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-6">Start tracking stocks by adding them to your watchlist</p>
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold shadow-lg transition-all"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Your First Stock
-            </button>
+            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+              {searchQuery ? 'No matching stocks found' : 'Your watchlist is empty'}
+            </h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto">
+              {searchQuery ? 'Try adjusting your search or filters' : 'Start building your portfolio by adding stocks to track'}
+            </p>
+            {!searchQuery && (
+              <button
+                onClick={() => setShowAddForm(true)}
+                className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold text-lg shadow-xl hover:shadow-2xl transition-all"
+              >
+                <FaPlus /> Add Your First Stock
+              </button>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {watchlist.map((stock) => (
-              <div
-                key={stock.id}
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-xl transition-shadow"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{stock.symbol}</h3>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">{stock.companyName}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {filteredAndSortedStocks.map((stock) => {
+              const live = liveMap[stock.symbol] || {};
+              const ltp = live.lastTradedPrice ?? live.currentPrice;
+              const change = live.change || 0;
+              const changePercent = live.changePercent || 0;
+              const isTargetReached = ltp && stock.targetPrice && ltp >= stock.targetPrice;
+              const targetDiff = ltp && stock.targetPrice ? ((ltp / stock.targetPrice - 1) * 100) : null;
+
+              return (
+                <div
+                  key={stock.id}
+                  className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 transition-all hover:shadow-xl group"
+                >
+                  <div className="p-6">
+                    {/* Header */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                            {stock.symbol.charAt(0)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                              {stock.symbol}
+                            </h3>
+                            {isTargetReached && (
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                                Target Reached
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 truncate max-w-xs">
+                            {stock.companyName}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditStock(stock.id)}
+                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          title="Edit"
+                        >
+                          <FaEdit className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => handleRemoveStock(stock.id)}
+                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          title="Remove"
+                        >
+                          <FaTrash className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Price Info */}
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                      <div className={`p-4 rounded-xl ${getPriceChangeBg(change)}`}>
+                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Current Price</div>
+                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                          {ltp ? `Rs. ${ltp.toLocaleString()}` : '--'}
+                        </div>
+                        {change !== 0 && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className={`text-sm font-semibold ${getPriceChangeColor(change)}`}>
+                              {change > 0 ? <FaArrowUp className="inline mr-1" /> : <FaArrowDown className="inline mr-1" />}
+                              {Math.abs(change)} ({changePercent.toFixed(2)}%)
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {stock.targetPrice && (
+                        <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+                          <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Target Price</div>
+                          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                            Rs. {stock.targetPrice.toLocaleString()}
+                          </div>
+                          {targetDiff !== null && ltp && (
+                            <div className="text-sm font-semibold mt-2">
+                              <span className={targetDiff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}>
+                                {targetDiff >= 0 ? '+' : ''}{targetDiff.toFixed(2)}% from target
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Notes */}
+                    {stock.notes && (
+                      <div className="mb-6">
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 mb-2">
+                          <FaRegStickyNote /> Notes
+                        </div>
+                        <p className="text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
+                          {stock.notes}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        Added {new Date(stock.addedAt).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {live.updatedAt ? `Updated: ${new Date(live.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}
+                      </div>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => handleRemoveStock(stock.id)}
-                    className="text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
                 </div>
-
-                {stock.targetPrice && (
-                  <div className="mb-3">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Target Price</p>
-                    <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">₹ {stock.targetPrice.toLocaleString()}</p>
-                  </div>
-                )}
-
-                {stock.notes && (
-                  <div className="mb-3">
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Notes</p>
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{stock.notes}</p>
-                  </div>
-                )}
-
-                <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Added {new Date(stock.addedAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
