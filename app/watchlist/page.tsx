@@ -17,6 +17,7 @@ import {
   FaSortAmountDown,
   FaSortAmountUp
 } from 'react-icons/fa';
+import StockChartModal from '@/components/StockChartModal';
 
 const NEPSE_API_URL = "/api/nepse-proxy";
 
@@ -567,6 +568,7 @@ export default function Watchlist() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <StockChartModal symbol={stock.symbol} companyName={stock.companyName} />
                         <button
                           onClick={() => handleEditStock(stock.id)}
                           className="p-2 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
