@@ -4,7 +4,7 @@ const NEPSE_API_URL = process.env.NEXT_PUBLIC_NEPSE_API_URL || "https://sharepul
 
 export async function GET() {
   try {
-    const res = await fetch(NEPSE_API_URL, { cache: "no-store" });
+    const res = await fetch(NEPSE_API_URL, { cache: "no-store" }); // Only cache: no-store, no revalidate
     if (!res.ok) {
       return NextResponse.json({ error: `Failed to fetch NEPSE data: ${res.status} ${res.statusText}` }, { status: res.status });
     }
