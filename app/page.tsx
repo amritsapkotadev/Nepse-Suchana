@@ -1,3 +1,5 @@
+"use client";
+import { useEffect, useState, useCallback } from "react";
 import StockTable from './components/StockTable';
 import GlobalStockSearch from './components/GlobalStockSearch';
 
@@ -62,30 +64,73 @@ interface ApiResponse {
   liveCompanyData: LiveCompanyData[];
 }
 
-async function getNepseData(): Promise<ApiResponse | null> {
-  try {
-    const apiUrl = process.env.NEPSE_API_KEY;
-    if (!apiUrl) {
-      console.error('NEPSE_API_KEY not found in environment variables');
+// Custom hook for data fetching and management
+function useNepseData(refreshInterval = 20000) {
+  const [nepseData, setNepseData] = useState<ApiResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const getNepseData = useCallback(async (): Promise<ApiResponse | null> => {
+    try {
+      const response = await fetch('/api/nepse-proxy', { 
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (!response.ok) {
+        console.error('Failed to fetch NEPSE data:', response.status);
+        return null;
+      }
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error fetching NEPSE data:', error);
       return null;
     }
+  }, []);
 
-    const response = await fetch(apiUrl, {
-      next: { revalidate: 60 },
-      cache: 'no-store'
-    });
-
-    if (!response.ok) {
-      console.error('Failed to fetch NEPSE data:', response.status);
-      return null;
+  const fetchData = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsRefreshing(true);
     }
+    
+    const data = await getNepseData();
+    
+    if (data) {
+      setNepseData(data);
+      setLastUpdated(new Date());
+    }
+    
+    if (showLoading) {
+      setIsRefreshing(false);
+    }
+    setLoading(false);
+  }, [getNepseData]);
 
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching NEPSE data:', error);
-    return null;
-  }
+  // Initial data load
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Set up interval for automatic refresh
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData(false); // Don't show loading for automatic refreshes
+    }, refreshInterval);
+    
+    return () => clearInterval(interval);
+  }, [fetchData, refreshInterval]);
+
+  return {
+    nepseData,
+    loading,
+    isRefreshing,
+    lastUpdated,
+    refreshData: () => fetchData(true)
+  };
 }
 
 function formatNumber(num: number): string {
@@ -99,8 +144,20 @@ function formatCrore(num: number): string {
   return (num / 10000000).toFixed(2);
 }
 
-export default async function Home() {
-  const nepseData = await getNepseData();
+export default function Home() {
+  const { nepseData, loading, isRefreshing, lastUpdated, refreshData } = useNepseData();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+            Loading NEPSE data...
+          </h1>
+        </div>
+      </div>
+    );
+  }
 
   if (!nepseData) {
     return (
@@ -109,9 +166,12 @@ export default async function Home() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
             Unable to fetch NEPSE data
           </h1>
-          <p className="text-slate-600 dark:text-slate-400">
-            Please check your API configuration
-          </p>
+          <button
+            onClick={() => refreshData()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -198,19 +258,46 @@ export default async function Home() {
 
             {/* Right Side - Status & Actions */}
             <div className="flex items-center gap-3">
-              {/* Live Indicator */}
-              <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border border-green-200 dark:border-green-800">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-                </span>
-                <span className="text-xs font-bold text-green-700 dark:text-green-400">LIVE</span>
+              {/* Live Indicator with Refresh Button */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border border-green-200 dark:border-green-800">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                  </span>
+                  <span className="text-xs font-bold text-green-700 dark:text-green-400">LIVE</span>
+                </div>
+                
+                {/* Manual Refresh Button */}
+                <button
+                  onClick={refreshData}
+                  disabled={isRefreshing}
+                  className={`p-2 rounded-xl transition-all ${isRefreshing 
+                    ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' 
+                    : 'bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50'}`}
+                >
+                  <svg 
+                    className={`w-5 h-5 ${isRefreshing ? 'text-slate-400 animate-spin' : 'text-blue-600 dark:text-blue-400'}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" 
+                    />
+                  </svg>
+                </button>
               </div>
 
               {/* Time Display */}
               <div className="hidden lg:flex flex-col items-end px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">Updated</p>
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                </p>
               </div>
 
               {/* Login Button */}
@@ -250,56 +337,85 @@ export default async function Home() {
           allStocks={allStocks}
         />
 
-        {/* Market Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border border-slate-200 dark:border-slate-700">
-            <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">NEPSE Index</h3>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
-              {nepseIndex?.currentValue.toFixed(2) || 'N/A'}
-            </p>
-            <p className={`text-sm mt-1 ${(nepseIndex?.change ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-              {(nepseIndex?.change ?? 0) >= 0 ? '+' : ''}{nepseIndex?.change.toFixed(2)} ({nepseIndex?.changePercent.toFixed(2)}%)
-            </p>
-          </div>
+        {/* Market Summary Cards with refresh indicator */}
+        <div className="relative">
+          {isRefreshing && (
+            <div className="absolute -top-10 right-0 flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+              <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Updating data...
+            </div>
+          )}
           
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border border-slate-200 dark:border-slate-700">
-            <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Turnover</h3>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
-              Rs {formatCrore(totalTurnover)} Cr
-            </p>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-              Volume: {formatNumber(totalVolume)}
-            </p>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border border-slate-200 dark:border-slate-700">
-            <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Gainers</h3>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-2">{gainers}</p>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Stocks up today</p>
-          </div>
-          
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border border-slate-200 dark:border-slate-700">
-            <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Losers</h3>
-            <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-2">{losers}</p>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Stocks down today</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border border-slate-200 dark:border-slate-700">
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">NEPSE Index</h3>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
+                {nepseIndex?.currentValue.toFixed(2) || 'N/A'}
+              </p>
+              <p className={`text-sm mt-1 ${(nepseIndex?.change ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {(nepseIndex?.change ?? 0) >= 0 ? '+' : ''}{nepseIndex?.change.toFixed(2)} ({nepseIndex?.changePercent.toFixed(2)}%)
+              </p>
+            </div>
+            
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border border-slate-200 dark:border-slate-700">
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Total Turnover</h3>
+              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
+                Rs {formatCrore(totalTurnover)} Cr
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                Volume: {formatNumber(totalVolume)}
+              </p>
+            </div>
+            
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border border-slate-200 dark:border-slate-700">
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Gainers</h3>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-2">{gainers}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Stocks up today</p>
+            </div>
+            
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6 border border-slate-200 dark:border-slate-700">
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-400">Losers</h3>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400 mt-2">{losers}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">Stocks down today</p>
+            </div>
           </div>
         </div>
 
         {/* Top Gainers and Losers */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
           <div id="gainers">
-            <StockTable stocks={topGainers} title="Top Gainers" showName={false} showTurnover={false} />
+            <StockTable 
+              stocks={topGainers} 
+              title="Top Gainers" 
+              showName={false} 
+              showTurnover={false}
+              loading={isRefreshing}
+            />
           </div>
           <div id="losers">
-            <StockTable stocks={topLosers} title="Top Losers" showName={false} showTurnover={false} />
+            <StockTable 
+              stocks={topLosers} 
+              title="Top Losers" 
+              showName={false} 
+              showTurnover={false}
+              loading={isRefreshing}
+            />
           </div>
         </div>
 
         {/* Footer Note */}
         <div className="mt-8 text-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Live data from NEPSE API • Last updated: {new Date().toLocaleString()}
+            Live data from NEPSE API • Last updated: {lastUpdated.toLocaleString()}
           </p>
+          <button
+            onClick={refreshData}
+            className="mt-2 px-4 py-2 text-sm bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+          >
+            Click to refresh data
+          </button>
         </div>
       </main>
     </div>
