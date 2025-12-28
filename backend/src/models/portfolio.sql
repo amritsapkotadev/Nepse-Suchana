@@ -1,5 +1,4 @@
-CREATE TABLE portfolio (
-    id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS portfolio (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     stock_symbol VARCHAR(10) NOT NULL,
     quantity INTEGER NOT NULL CHECK (quantity >= 0),

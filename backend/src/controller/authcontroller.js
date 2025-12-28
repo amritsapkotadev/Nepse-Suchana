@@ -36,7 +36,7 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-  const { email, password } = req.body;
+   const { email, password } = req.body;
 
   try {
     const result = await db.query(
