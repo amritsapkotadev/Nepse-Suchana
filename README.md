@@ -1,36 +1,180 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NEPSE Suchana
 
-## Getting Started
+A comprehensive web application for tracking stocks, managing portfolios, and maintaining a watchlist for the Nepal Stock Exchange (NEPSE). Built with Next.js (React), Node.js, Express, and PostgreSQL.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Table of Contents
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Setup & Installation](#setup--installation)
+- [Environment Variables](#environment-variables)
+- [Database](#database)
+- [Backend API](#backend-api)
+- [Frontend](#frontend)
+- [Development Scripts](#development-scripts)
+- [Troubleshooting](#troubleshooting)
+- [License](#license)
+- [Author](#author)
+
+---
+
+## Features
+- **Live NEPSE Data:** Real-time stock data with auto-refresh (every 20 seconds).
+- **Portfolio Management:** Add, merge, and track stocks with weighted average price calculation.
+- **Watchlist:** Add/remove stocks to a personal watchlist.
+- **Global Stock Search:** Search and view details for all NEPSE stocks.
+- **Charts:** Visualize stock performance with custom charting.
+- **Authentication:** User login and signup (basic auth).
+- **Responsive UI:** Modern, mobile-friendly design with dark mode support.
+
+---
+
+## Tech Stack
+- **Frontend:** Next.js (App Router), React, TypeScript, Tailwind CSS
+- **Backend:** Node.js, Express.js
+- **Database:** PostgreSQL
+- **API Integration:** NEPSE API (via backend proxy)
+
+---
+
+## Project Structure
+```
+/ (root)
+├── app/                # Next.js frontend (pages, components)
+│   ├── (auth)/         # Auth pages (login, signup)
+│   ├── components/     # Reusable React components
+│   ├── portfolio/      # Portfolio UI
+│   ├── watchlist/      # Watchlist UI
+│   └── ...
+├── backend/            # Node.js/Express backend
+│   ├── src/
+│   │   ├── config/     # DB setup, migration scripts
+│   │   ├── controller/ # Route controllers (auth, portfolio, watchlist)
+│   │   ├── models/     # SQL schema files
+│   │   └── Routes/     # Express route definitions
+│   ├── .env            # Backend environment variables
+│   └── server.js       # Express server entry point
+├── public/             # Static assets
+├── package.json        # Frontend dependencies
+└── README.md           # Project documentation
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup & Installation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Prerequisites
+- Node.js (v18+ recommended)
+- PostgreSQL (local or remote instance)
 
-## Learn More
+### 1. Clone the Repository
+```bash
+git clone https://github.com/amritsapkotadev/Nepse-Suchana.git
+cd Nepse-Suchana
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 2. Install Dependencies
+#### Frontend
+```bash
+npm install
+```
+#### Backend
+```bash
+cd backend
+npm install
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Configure Environment Variables
+- Copy `.env.example` to `.env` in both root and `backend/` folders (if provided).
+- Set the following variables in `backend/.env`:
+  - `DATABASE_URL` (PostgreSQL connection string)
+  - `NEPSE_API_KEY` (if required by NEPSE API)
+  - `PORT` (optional, default: 3001)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Run Database Migrations
+```bash
+cd backend
+node src/config/migrate.js
+```
 
-## Deploy on Vercel
+### 5. Start the Backend Server
+```bash
+node server.js
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 6. Start the Frontend (Next.js)
+```bash
+cd ..
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## Environment Variables
+**Backend (`backend/.env`):**
+```
+DATABASE_URL=postgres://user:password@localhost:5432/nepse_db
+NEPSE_API_KEY=your_nepse_api_key
+PORT=3001
+```
+
+---
+
+## Database
+- **Schema:** Defined in `backend/src/models/`
+  - `usermodel.sql`: User table
+  - `portfolio.sql`: Portfolio table
+  - `watchlist` table: Used in controllers (see migration scripts)
+- **Migrations:** Run with `node src/config/migrate.js`
+
+---
+
+## Backend API
+- **Base URL:** `http://localhost:3001/api/`
+- **Routes:**
+  - `/auth` - Authentication (login, signup)
+  - `/portfolio` - Portfolio CRUD
+  - `/watchlist` - Watchlist CRUD
+  - `/health` - Health check
+- **Controllers:** Located in `backend/src/controller/`
+- **Database Access:** All controllers use a shared PostgreSQL pool (`src/db.js`)
+
+---
+
+## Frontend
+- **Location:** `/app`
+- **Key Files:**
+  - `page.tsx`: Home page, live NEPSE data, auto-refresh logic
+  - `components/`: StockTable, GlobalStockSearch, Stockdetailmodal, etc.
+  - `portfolio/`, `watchlist/`: Portfolio and watchlist UIs
+- **Data Fetching:**
+  - Uses `/api/nepse-proxy` for client-safe NEPSE data fetching
+  - Auto-refreshes every 20 seconds without full page reload
+
+---
+
+## Development Scripts
+- `npm run dev` - Start Next.js frontend in development mode
+- `node server.js` (in backend) - Start Express backend
+- `node src/config/migrate.js` (in backend) - Run DB migrations
+
+---
+
+## Troubleshooting
+- **Module Not Found:** Ensure all import paths match file names (case-sensitive on Linux/macOS).
+- **Database Errors:** Check `DATABASE_URL` and that PostgreSQL is running.
+- **API Key Issues:** Make sure `NEPSE_API_KEY` is set in backend `.env` and not exposed to frontend.
+- **Port Conflicts:** Change `PORT` in `.env` if 3001 is in use.
+- **Live Data Not Updating:** Ensure backend is running and `/api/nepse-proxy` is reachable from frontend.
+
+---
+
+## License
+MIT License. See [LICENSE](LICENSE) for details.
+
+---
+
+## Author
+[Amrit Sapkota](https://github.com/amritsapkotadev)
