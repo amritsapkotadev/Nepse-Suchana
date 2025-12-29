@@ -4,6 +4,7 @@ require('dotenv').config();
 const db = require('./src/config/databasesetup');
 const portfolioRoutes = require('./src/Routes/PortfolioRoutes');
 const authRoutes = require('./src/Routes/AuthRoute');
+const watchlistRoutes = require('./src/Routes/watchlistRoute');
 const app = express();
 const port = process.env.PORT || 3001;
 
@@ -15,7 +16,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/portfolio', require('./src/Routes/PortfolioRoutes'));
-
+app.use('/api/watchlist', watchlistRoutes);
 // Health check route
 app.get('/api/health', async (req, res) => {
   try {
