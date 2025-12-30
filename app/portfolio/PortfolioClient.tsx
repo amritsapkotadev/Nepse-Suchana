@@ -1,6 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useState, useRef, useEffect, useCallback } from "react";
+// ...existing code...
+
+interface Portfolio {
+  id: number;
+  name: string;
+  description?: string;
+}
 import { FaSearch, FaBuilding, FaHashtag, FaMoneyBillWave, FaPlusCircle, FaTrash, FaChartLine, FaSort, FaSortUp, FaSortDown, FaInfoCircle, FaEdit, FaEye, FaEyeSlash, FaExternalLinkAlt, FaTimes, FaPercentage, FaRupeeSign, FaLayerGroup, FaArrowUp, FaArrowDown, FaGift, FaShareAlt, FaMoneyBill, FaStickyNote, FaFilter, FaDownload, FaUpload, FaCog, FaBell, FaHistory, FaCalculator, FaCalendarAlt, FaWallet, FaPiggyBank, FaCoins, FaChartBar, FaBullseye, FaDatabase } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import debounce from "lodash/debounce";
@@ -38,20 +45,11 @@ interface PortfolioStock {
 const NEPSE_API_URL = "/api/nepse-proxy";
 
 export default function NepsePortfolio() {
-  const [portfolio, setPortfolio] = useState<PortfolioStock[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('nepse-portfolio-v2');
-      return saved ? JSON.parse(saved).map((stock: any) => ({
-        ...stock,
-        dateAdded: new Date(stock.dateAdded),
-        corporateActions: stock.corporateActions?.map((action: any) => ({
-          ...action,
-          date: new Date(action.date)
-        })) || []
-      })) : [];
-    }
-    return [];
-  });
+
+  // Multi-portfolio state
+  const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<number|null>(null);
+  const [portfolio, setPortfolio] = useState<PortfolioStock[]>([]);
   
   const [form, setForm] = useState({
     symbol: "",
@@ -92,10 +90,53 @@ export default function NepsePortfolio() {
   const inputRef = useRef<HTMLInputElement>(null);
   const corporateActionSymbolRef = useRef<HTMLInputElement>(null);
 
-  // Fetch all stocks on component mount
+
+  // Fetch all stocks and portfolios on mount
   useEffect(() => {
     fetchAllStocks();
+    fetchPortfolios();
   }, []);
+
+  // Fetch portfolio data when selected portfolio changes
+  useEffect(() => {
+    if (selectedPortfolioId) {
+      fetchPortfolioData(selectedPortfolioId);
+    } else {
+      setPortfolio([]);
+    }
+  }, [selectedPortfolioId]);
+
+  // Fetch portfolios from backend
+  const fetchPortfolios = async () => {
+    try {
+      // TODO: Replace with actual user_id logic
+      const user_id = 1;
+      const res = await fetch(`/api/portfolios?user_id=${user_id}`);
+      const data = await res.json();
+      setPortfolios(data);
+      if (data.length > 0) setSelectedPortfolioId(data[0].id);
+    } catch (err) {
+      setError('Failed to fetch portfolios');
+    }
+  };
+
+  // Fetch portfolio stocks for selected portfolio
+  const fetchPortfolioData = async (portfolioId: number) => {
+    try {
+      const res = await fetch(`/api/portfolio?portfolio_id=${portfolioId}`);
+      const data = await res.json();
+      setPortfolio(data.map((stock: any) => ({
+        ...stock,
+        dateAdded: new Date(stock.dateAdded),
+        corporateActions: stock.corporateActions?.map((action: any) => ({
+          ...action,
+          date: new Date(action.date)
+        })) || []
+      })));
+    } catch (err) {
+      setError('Failed to fetch portfolio data');
+    }
+  };
 
   // Save portfolio to localStorage
   useEffect(() => {
@@ -726,6 +767,41 @@ export default function NepsePortfolio() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      {/* Portfolio Selector */}
+      <div className="mb-4 flex items-center gap-2">
+        <label htmlFor="portfolio-select" className="font-medium">Select Portfolio:</label>
+        <select
+          id="portfolio-select"
+          value={selectedPortfolioId ?? ''}
+          onChange={e => setSelectedPortfolioId(Number(e.target.value))}
+          className="border rounded px-2 py-1"
+        >
+          <option value="">-- Choose --</option>
+          {portfolios.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+        <button
+          className="ml-2 px-2 py-1 bg-blue-500 text-white rounded"
+          onClick={async () => {
+            const name = prompt('Enter new portfolio name (e.g., Me, Father, Mother):');
+            if (name) {
+              // TODO: Replace with actual user_id logic
+              const user_id = 1;
+              const res = await fetch('/api/portfolios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id, name })
+              });
+              if (res.ok) {
+                fetchPortfolios();
+              } else {
+                setError('Failed to create portfolio');
+              }
+            }
+          }}
+        >+ Add Portfolio</button>
+      </div>
       {/* Navigation Bar */}
       <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
