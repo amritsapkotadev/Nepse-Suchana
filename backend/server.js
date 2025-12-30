@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const db = require('./src/config/databasesetup');
-const portfolioRoutes = require('./src/Routes/PortfolioRoutes');
+// Removed: const portfolioRoutes = require('./Routes/PortfolioRoute');
 const authRoutes = require('./src/Routes/AuthRoute');
 const watchlistRoutes = require('./src/Routes/watchlistRoute');
 const app = express();
@@ -17,6 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/portfolio', require('./src/Routes/PortfolioRoutes'));
 app.use('/api/watchlist', watchlistRoutes);
+// Removed: app.use(portfolioRoutes);
 // Health check route
 app.get('/api/health', async (req, res) => {
   try {
