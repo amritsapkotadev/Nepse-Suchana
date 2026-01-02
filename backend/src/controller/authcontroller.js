@@ -27,24 +27,22 @@ const register = async (req, res) => {
     });
 
   } catch (error) {
-    // PostgreSQL unique violation (email already exists)
-    if (error.code === '23505') {
+    console.error('Register error:', error);
+     if (error.code === '23505') {
       return res.status(409).json({
         status: 'error',
         message: 'Email already exists'
       });
     }
-
     return res.status(500).json({
       status: 'error',
-      message: 'Database query failed'
+      message: 'Database query failed',
+      error: error.message
     });
   }
 };
 
-/**
- * LOGIN USER
- */
+ 
 const login = async (req, res) => {
   const { email, password } = req.body;
 
@@ -100,9 +98,11 @@ const login = async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Login error:', error);
     return res.status(500).json({
       status: 'error',
-      message: 'Database query failed'
+      message: 'Database query failed',
+      error: error.message
     });
   }
 };
