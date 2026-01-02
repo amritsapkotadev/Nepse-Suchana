@@ -65,6 +65,8 @@ interface ApiResponse {
   liveCompanyData: LiveCompanyData[];
 }
 
+
+
 // Custom hook for data fetching and management
 function useNepseData(refreshInterval = 15000) {
   const [nepseData, setNepseData] = useState<ApiResponse | null>(null);
@@ -154,7 +156,7 @@ function formatCrore(num: number): string {
 
 export default function Home() {
   const { nepseData, loading, isRefreshing, lastUpdated, refreshCount, refreshData } = useNepseData();
-  
+
   const nepseIndex = useMemo(() => nepseData?.indices?.find(i => i.symbol === 'NEPSE'), [nepseData]);
   const totalTurnover = useMemo(() => nepseData?.marketSummary?.find(m => m.name === 'Total Turnover Rs:')?.value || 0, [nepseData]);
   const totalVolume = useMemo(() => nepseData?.marketSummary?.find(m => m.name === 'Total Traded Shares')?.value || 0, [nepseData]);
@@ -162,7 +164,7 @@ export default function Home() {
   const losers = useMemo(() => nepseData?.stockSummary?.declined || 0, [nepseData]);
   const unchanged = useMemo(() => nepseData?.stockSummary?.unchanged || 0, [nepseData]);
   const otherIndices = useMemo(() => nepseData?.indices?.filter(i => i.symbol !== 'NEPSE') || [], [nepseData]);
-  
+
   const allStocks: Stock[] = useMemo(() => nepseData?.liveCompanyData?.map(company => ({
     symbol: company.symbol,
     name: company.securityName,
