@@ -118,12 +118,16 @@ function useNepseData(refreshInterval = 15000) {
     fetchData();
   }, [fetchData]);
 
-  // Set up interval for automatic refresh
+  // Set up interval for automatic refresh only during market open (11am-3pm)
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchData(false);
+      const now = new Date();
+      const hour = now.getHours();
+      // Market open: 11:00 (11) to 14:59 (14)
+      if (hour >= 11 && hour < 15) {
+        fetchData(false);
+      }
     }, refreshInterval);
-    
     return () => clearInterval(interval);
   }, [fetchData, refreshInterval]);
 
