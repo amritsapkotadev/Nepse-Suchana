@@ -1,16 +1,31 @@
 "use client";
-import Link from "next/link";
-import { useState, useRef, useEffect, useCallback } from "react";
-// ...existing code...
+import { useState, useEffect, useRef, useCallback } from "react";
+
+import { safeFetch } from "../lib/api-utils";
+import {
+  FaSearch, FaBuilding, FaHashtag, FaMoneyBillWave, FaPlusCircle,
+  FaTrash, FaChartLine, FaInfoCircle, FaEdit, FaEye, FaEyeSlash,
+  FaTimes, FaPercentage, FaRupeeSign, FaArrowUp, FaArrowDown,
+  FaGift, FaDownload, FaUpload, FaDatabase, FaCalendarAlt, FaWallet,
+  FaPiggyBank, FaChartBar, FaLayerGroup, FaCoins, FaHistory,
+  FaMoneyBill, FaFilter, FaExternalLinkAlt, FaCopy, FaCheck,
+  FaEllipsisV, FaStar, FaChartPie, FaCog,
+  FaBullseye, FaUser, FaUsers, FaBell, FaShareAlt, FaQrcode,
+  FaFileExport, FaFileImport, FaSync, FaShieldAlt, FaLock, FaUnlock
+} from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import debounce from "lodash/debounce";
 
 interface Portfolio {
   id: number;
   name: string;
   description?: string;
+  initial_balance: number;
+  current_balance: number;
+  created_at: string;
+  holdings_count?: number;
+  total_value?: number;
 }
-import { FaSearch, FaBuilding, FaHashtag, FaMoneyBillWave, FaPlusCircle, FaTrash, FaChartLine, FaSort, FaSortUp, FaSortDown, FaInfoCircle, FaEdit, FaEye, FaEyeSlash, FaExternalLinkAlt, FaTimes, FaPercentage, FaRupeeSign, FaLayerGroup, FaArrowUp, FaArrowDown, FaGift, FaShareAlt, FaMoneyBill, FaStickyNote, FaFilter, FaDownload, FaUpload, FaCog, FaBell, FaHistory, FaCalculator, FaCalendarAlt, FaWallet, FaPiggyBank, FaCoins, FaChartBar, FaBullseye, FaDatabase } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
-import debounce from "lodash/debounce";
 
 interface Stock {
   symbol: string;
@@ -18,17 +33,6 @@ interface Stock {
   currentPrice?: number;
   change?: number;
   changePercent?: number;
-  lastTradedPrice?: number;
-  close?: number;
-}
-
-interface CorporateAction {
-  id: string;
-  symbol: string;
-  type: "cash_dividend" | "right_share" | "bonus_share" | "other";
-  value: number | string;
-  date: Date;
-  notes?: string;
 }
 
 interface PortfolioStock {
@@ -39,18 +43,38 @@ interface PortfolioStock {
   buyPrice: number;
   transactionType: "Buy" | "Sell";
   dateAdded: Date;
-  corporateActions?: CorporateAction[];
+  portfolio_id?: number;
 }
 
-const NEPSE_API_URL = "/api/nepse-proxy";
-
-export default function NepsePortfolio() {
-
+export default function MultiPortfolioTracker() {
+    // Fetch all stocks for suggestions from backend API
+    const fetchAllStocks = async () => {
+      try {
+        // Use the backend proxy route for live NEPSE data
+        const data = await safeFetch<any>('/api/stocks');
+        if (Array.isArray(data)) {
+          setAllStocks(data);
+        } else if (data && Array.isArray(data.stocks)) {
+          setAllStocks(data.stocks);
+        } else {
+          setAllStocks([]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch stocks:', err);
+        setAllStocks([]); // fallback to empty if error
+      }
+    };
   // Multi-portfolio state
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<number|null>(null);
-  const [portfolio, setPortfolio] = useState<PortfolioStock[]>([]);
+  const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
+  const [portfolioStocks, setPortfolioStocks] = useState<PortfolioStock[]>([]);
+  const [isLoading, setIsLoading] = useState({
+    portfolios: false,
+    stocks: false,
+    portfolio: false
+  });
   
+  // Form states
   const [form, setForm] = useState({
     symbol: "",
     companyName: "",
@@ -59,203 +83,340 @@ export default function NepsePortfolio() {
     transactionType: "Buy" as "Buy" | "Sell"
   });
   
-  const [corporateActionForm, setCorporateActionForm] = useState({
-    symbol: "",
-    type: "cash_dividend" as "cash_dividend" | "right_share" | "bonus_share" | "other",
-    value: "",
-    date: new Date().toISOString().split('T')[0],
-    notes: ""
+  const [portfolioForm, setPortfolioForm] = useState({
+    name: "",
+    description: "",
+    initial_balance: ""
   });
   
+  const [editPortfolioForm, setEditPortfolioForm] = useState({
+    name: "",
+    description: ""
+  });
+  
+  // UI states
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [suggestions, setSuggestions] = useState<Stock[]>([]);
+  const [activeTab, setActiveTab] = useState<"overview" | "holdings" | "transactions" | "analytics">("overview");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [stockSuggestions, setStockSuggestions] = useState<Stock[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof PortfolioStock; direction: 'asc' | 'desc' }>({ 
-    key: 'dateAdded', 
-    direction: 'desc' 
-  });
+  const [isCreating, setIsCreating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showTotalValue, setShowTotalValue] = useState(true);
-  const [allStocks, setAllStocks] = useState<Stock[]>([]);
-  const [isLoadingStocks, setIsLoadingStocks] = useState(false);
-  const [activeTab, setActiveTab] = useState<"transactions" | "dividends" | "analysis">("transactions");
-  const [showCorporateActionModal, setShowCorporateActionModal] = useState(false);
-  const [selectedStockForAction, setSelectedStockForAction] = useState<PortfolioStock | null>(null);
+  const [sortConfig, setSortConfig] = useState({ key: "dateAdded", direction: "desc" });
   const [filterSymbol, setFilterSymbol] = useState("");
-  const [showCorporateActionSuggestions, setShowCorporateActionSuggestions] = useState(false);
+  const [allStocks, setAllStocks] = useState<Stock[]>([]);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showPortfolioMenu, setShowPortfolioMenu] = useState<number | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>("");
   
   const inputRef = useRef<HTMLInputElement>(null);
-  const corporateActionSymbolRef = useRef<HTMLInputElement>(null);
+  const portfolioMenuRef = useRef<HTMLDivElement>(null);
 
-
-  // Fetch all stocks and portfolios on mount
+  // Fetch portfolios on mount
   useEffect(() => {
-    fetchAllStocks();
     fetchPortfolios();
+    fetchAllStocks();
   }, []);
 
-  // Fetch portfolio data when selected portfolio changes
+  // Close portfolio menu when clicking outside
   useEffect(() => {
-    if (selectedPortfolioId) {
-      fetchPortfolioData(selectedPortfolioId);
-    } else {
-      setPortfolio([]);
-    }
-  }, [selectedPortfolioId]);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (portfolioMenuRef.current && !portfolioMenuRef.current.contains(event.target as Node)) {
+        setShowPortfolioMenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Fetch portfolios from backend
   const fetchPortfolios = async () => {
     try {
-      // TODO: Replace with actual user_id logic
-      const user_id = 1;
-      const res = await fetch(`/api/portfolios?user_id=${user_id}`);
-      const data = await res.json();
-      setPortfolios(data);
-      if (data.length > 0) setSelectedPortfolioId(data[0].id);
-    } catch (err) {
-      setError('Failed to fetch portfolios');
-    }
-  };
-
-  // Fetch portfolio stocks for selected portfolio
-  const fetchPortfolioData = async (portfolioId: number) => {
-    try {
-      const res = await fetch(`/api/portfolio?portfolio_id=${portfolioId}`);
-      const data = await res.json();
-      setPortfolio(data.map((stock: any) => ({
-        ...stock,
-        dateAdded: new Date(stock.dateAdded),
-        corporateActions: stock.corporateActions?.map((action: any) => ({
-          ...action,
-          date: new Date(action.date)
-        })) || []
-      })));
-    } catch (err) {
-      setError('Failed to fetch portfolio data');
-    }
-  };
-
-  // Save portfolio to localStorage
-  useEffect(() => {
-    if (portfolio.length > 0) {
-      localStorage.setItem('nepse-portfolio-v2', JSON.stringify(portfolio));
-    } else {
-      localStorage.removeItem('nepse-portfolio-v2');
-    }
-  }, [portfolio]);
-
-  const fetchAllStocks = async () => {
-    if (!NEPSE_API_URL) {
-      setError("NEPSE API URL is not set.");
-      setAllStocks([]);
-      return;
-    }
-    try {
-      setIsLoadingStocks(true);
-      const res = await fetch(NEPSE_API_URL);
-      if (!res.ok) {
-        setError(`Failed to fetch stocks from NEPSE API. Status: ${res.status} ${res.statusText}`);
-        setAllStocks([]);
-        return;
-      }
-      const data = await res.json();
-      if (!data.liveCompanyData) {
-        setError("API response does not contain liveCompanyData.");
-        setAllStocks([]);
-        return;
-      }
-      
-      const stocks = (data.liveCompanyData || []).map((c: any) => ({ 
-        symbol: c.symbol, 
-        name: c.securityName,
-        lastTradedPrice: c.lastTradedPrice || null,
-        currentPrice: c.currentprice || c.close || 0,
-        close: c.close || 0,
-        change: c.change || 0,
-        changePercent: c.changePercent || 0
-      }));
-      setAllStocks(stocks);
+      setIsLoading(prev => ({ ...prev, portfolios: true }));
       setError("");
-    } catch (error) {
-      setError("Failed to fetch stocks. Please check your internet connection.");
-      setAllStocks([]);
-      console.error('Failed to fetch stocks:', error);
-    } finally {
-      setIsLoadingStocks(false);
-    }
-  };
-
-  const debouncedFetchSuggestions = useCallback(
-    debounce(async (query: string) => {
-      if (!query.trim()) {
-        setSuggestions([]);
-        setShowSuggestions(false);
-        setIsLoadingSuggestions(false);
-        return;
-      }
+      setDebugInfo("Fetching portfolios...");
+      
+      // Try multiple endpoints if needed
+      let data: Portfolio[] = [];
       
       try {
-        const filtered = allStocks.filter(stock =>
-          stock.symbol.toLowerCase().includes(query.toLowerCase()) ||
-          stock.name.toLowerCase().includes(query.toLowerCase())
-        ).slice(0, 8);
+         data = await safeFetch<Portfolio[]>('/api/portfolios');
+      } catch (err) {
+        setDebugInfo(`API error: ${err instanceof Error ? err.message : 'Unknown error'}`);
         
-        setSuggestions(filtered);
-        setShowSuggestions(filtered.length > 0);
-      } catch (error) {
-        console.error('Failed to fetch suggestions:', error);
-        setSuggestions([]);
-      } finally {
-        setIsLoadingSuggestions(false);
+         
       }
-    }, 300),
+      
+      setPortfolios(data);
+      
+      if (data.length > 0 && !selectedPortfolio) {
+        setSelectedPortfolio(data[0]);
+        await fetchPortfolioData(data[0].id);
+      } else if (data.length === 0) {
+        setSelectedPortfolio(null);
+        setPortfolioStocks([]);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch portfolios';
+      setError(errorMessage);
+      console.error('Fetch portfolios error:', errorMessage);
+      
+      // For debugging, show what went wrong
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          const testRes = await fetch('/api/portfolios');
+          console.log('Test fetch status:', testRes.status);
+          console.log('Test fetch headers:', Object.fromEntries(testRes.headers.entries()));
+          const text = await testRes.text();
+          console.log('Test fetch response (first 200 chars):', text.substring(0, 200));
+        } catch (debugErr) {
+          console.error('Debug fetch error:', debugErr);
+        }
+      }
+    } finally {
+      setIsLoading(prev => ({ ...prev, portfolios: false }));
+    }
+  };
+
+  // Fetch portfolio stocks
+  const fetchPortfolioData = async (portfolioId: number) => {
+    try {
+      setIsLoading(prev => ({ ...prev, portfolio: true }));
+      setError("");
+      
+      const data = await safeFetch<any[]>(`/api/portfolio-holdings?portfolio_id=${portfolioId}`);
+      setPortfolioStocks(data.map((stock: any) => ({
+        ...stock,
+        dateAdded: new Date(stock.dateAdded)
+      })));
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch portfolio data';
+      setError(errorMessage);
+      console.error('Fetch portfolio data error:', errorMessage);
+    } finally {
+      setIsLoading(prev => ({ ...prev, portfolio: false }));
+    }
+  };
+
+  
+
+  // Create new portfolio
+  const handleCreatePortfolio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    setError("");
+    
+    try {
+      const newPortfolio = await safeFetch<Portfolio>('/api/portfolios', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: portfolioForm.name,
+          description: portfolioForm.description,
+          initial_balance: parseFloat(portfolioForm.initial_balance) || 0
+        })
+      });
+      
+      setPortfolios(prev => [...prev, newPortfolio]);
+      setSuccess('Portfolio created successfully!');
+      setShowAddModal(false);
+      setPortfolioForm({ name: "", description: "", initial_balance: "" });
+      
+      // Auto-select new portfolio
+      setSelectedPortfolio(newPortfolio);
+      await fetchPortfolioData(newPortfolio.id);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create portfolio';
+      setError(errorMessage);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Update portfolio
+  const handleUpdatePortfolio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPortfolio) return;
+    
+    setIsCreating(true);
+    setError("");
+    
+    try {
+      const updatedPortfolio = await safeFetch<Portfolio>(`/api/portfolios/${selectedPortfolio.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(editPortfolioForm)
+      });
+      
+      setPortfolios(prev => prev.map(p => 
+        p.id === selectedPortfolio.id ? { ...p, ...updatedPortfolio } : p
+      ));
+      setSelectedPortfolio(updatedPortfolio);
+      setSuccess('Portfolio updated successfully!');
+      setShowEditModal(false);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update portfolio';
+      setError(errorMessage);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Delete portfolio
+  const handleDeletePortfolio = async () => {
+    if (!selectedPortfolio) return;
+    
+    setIsDeleting(true);
+    setError("");
+    
+    try {
+      await safeFetch(`/api/portfolios/${selectedPortfolio.id}`, {
+        method: 'DELETE'
+      });
+      
+      setPortfolios(prev => prev.filter(p => p.id !== selectedPortfolio.id));
+      
+      // Select another portfolio if available
+      if (portfolios.length > 1) {
+        const remaining = portfolios.filter(p => p.id !== selectedPortfolio.id);
+        setSelectedPortfolio(remaining[0]);
+        await fetchPortfolioData(remaining[0].id);
+      } else {
+        setSelectedPortfolio(null);
+        setPortfolioStocks([]);
+      }
+      
+      setSuccess('Portfolio deleted successfully!');
+      setShowDeleteConfirm(false);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete portfolio';
+      setError(errorMessage);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Add stock to portfolio
+  const handleAddStock = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPortfolio) {
+      setError("Please select a portfolio first");
+      return;
+    }
+    
+    setError("");
+    setSuccess("");
+    
+    const quantity = parseFloat(form.quantity);
+    const buyPrice = parseFloat(form.buyPrice);
+    
+    if (!form.symbol || !form.companyName || isNaN(quantity) || isNaN(buyPrice)) {
+      setError("All fields are required with valid numbers");
+      return;
+    }
+    
+    try {
+      const newStock = await safeFetch<any>('/api/portfolio-holdings', {
+        method: 'POST',
+        body: JSON.stringify({
+          portfolio_id: selectedPortfolio.id,
+          symbol: form.symbol.toUpperCase(),
+          company_name: form.companyName,
+          quantity,
+          buy_price: buyPrice,
+          transaction_type: form.transactionType
+        })
+      });
+      
+      setPortfolioStocks(prev => [...prev, {
+        ...newStock,
+        dateAdded: new Date(newStock.dateAdded)
+      }]);
+      
+      // Update portfolio holdings count
+      setPortfolios(prev => prev.map(p => 
+        p.id === selectedPortfolio.id 
+          ? { ...p, holdings_count: (p.holdings_count || 0) + 1 }
+          : p
+      ));
+      
+      setSuccess(`${form.transactionType} transaction added successfully!`);
+      setShowStockModal(false);
+      resetStockForm();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add stock';
+      setError(errorMessage);
+    }
+  };
+
+  // Delete stock from portfolio
+  const handleDeleteStock = async (stockId: string) => {
+    try {
+      await safeFetch(`/api/portfolio-holdings/${stockId}`, {
+        method: 'DELETE'
+      });
+      
+      setPortfolioStocks(prev => prev.filter(s => s.id !== stockId));
+      
+      // Update portfolio holdings count
+      if (selectedPortfolio) {
+        setPortfolios(prev => prev.map(p => 
+          p.id === selectedPortfolio.id 
+            ? { ...p, holdings_count: Math.max(0, (p.holdings_count || 1) - 1) }
+            : p
+        ));
+      }
+      
+      setSuccess('Stock removed successfully!');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete stock';
+      setError(errorMessage);
+    }
+  };
+
+  // Search stock suggestions
+  const debouncedSearch = useCallback(
+    debounce((query: string) => {
+      if (!query.trim()) {
+        setStockSuggestions([]);
+        return;
+      }
+      const lowerQuery = query.toLowerCase();
+      const filtered = allStocks.filter(stock =>
+        stock.symbol.toLowerCase().includes(lowerQuery) ||
+        stock.name.toLowerCase().includes(lowerQuery)
+      ).slice(0, 10); // show up to 10 suggestions
+      setStockSuggestions(filtered);
+    }, 200),
     [allStocks]
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
-    if (name === "symbol") {
-      setIsLoadingSuggestions(true);
-      debouncedFetchSuggestions(value);
-    }
+  const handleStockSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setForm(prev => ({ ...prev, symbol: value }));
+    debouncedSearch(value);
   };
 
-  const handleCorporateActionChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setCorporateActionForm(prev => ({ ...prev, [name]: value }));
-    
-    if (name === "symbol") {
-      setShowCorporateActionSuggestions(true);
-    }
+  const highlightMatch = (text: string, query: string) => {
+    if (!query) return text;
+    const regex = new RegExp(`(${query})`, 'ig');
+    return text.replace(regex, '<mark>$1</mark>');
   };
 
-  const handleSuggestionClick = (stock: Stock) => {
-    const currentPrice = stock.lastTradedPrice || stock.currentPrice || stock.close || 0;
-    setForm(prev => ({ 
-      ...prev, 
-      symbol: stock.symbol, 
+  const selectSuggestion = (stock: Stock) => {
+    setForm(prev => ({
+      ...prev,
+      symbol: stock.symbol,
       companyName: stock.name,
-      buyPrice: currentPrice.toString()
+      buyPrice: (stock.currentPrice || 0).toString()
     }));
-    setSuggestions([]);
-    setShowSuggestions(false);
-    inputRef.current?.blur();
+    setStockSuggestions([]);
   };
 
-  const handleCorporateActionSuggestionClick = (stock: Stock) => {
-    setCorporateActionForm(prev => ({ 
-      ...prev, 
-      symbol: stock.symbol
-    }));
-    setShowCorporateActionSuggestions(false);
-    corporateActionSymbolRef.current?.blur();
-  };
-
-  const resetForm = () => {
+  const resetStockForm = () => {
     setForm({
       symbol: "",
       companyName: "",
@@ -263,546 +424,540 @@ export default function NepsePortfolio() {
       buyPrice: "",
       transactionType: "Buy"
     });
-    setIsEditing(false);
-    setEditId(null);
-    setError("");
-    setSuccess("");
+    setStockSuggestions([]);
   };
 
-  const resetCorporateActionForm = () => {
-    setCorporateActionForm({
-      symbol: selectedStockForAction?.symbol || "",
-      type: "cash_dividend",
-      value: "",
-      date: new Date().toISOString().split('T')[0],
-      notes: ""
+  const resetPortfolioForm = () => {
+    setPortfolioForm({
+      name: "",
+      description: "",
+      initial_balance: ""
     });
   };
 
-  // Calculate total owned shares for a symbol - FIXED
-  const getTotalOwnedShares = (symbol: string, asOfDate?: Date): number => {
-    return portfolio.reduce((total, stock) => {
-      if (stock.symbol === symbol) {
-        // If asOfDate is provided, only count transactions before that date
-        if (asOfDate && new Date(stock.dateAdded) > asOfDate) {
-          return total;
-        }
-        
-        return stock.transactionType === "Buy" 
-          ? total + stock.quantity 
-          : total - stock.quantity;
-      }
-      return total;
-    }, 0);
-  };
 
-  // Calculate effective quantity after bonus shares
-  const calculateEffectiveQuantity = (symbol: string, bonusPercentage?: number): number => {
-    let totalQuantity = getTotalOwnedShares(symbol);
+  // Calculate portfolio metrics
+  const calculateMetrics = () => {
+    if (!selectedPortfolio) return null;
     
-    if (bonusPercentage) {
-      // Bonus shares: For every 100 shares, you get (bonusPercentage) additional shares
-      const bonusShares = Math.floor((totalQuantity * bonusPercentage) / 100);
-      totalQuantity += bonusShares;
-    }
+    const totalInvestment = portfolioStocks
+      .filter(s => s.transactionType === "Buy")
+      .reduce((sum, stock) => sum + (stock.quantity * stock.buyPrice), 0);
     
-    return totalQuantity;
-  };
-
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    if (!form.symbol || !form.companyName || !form.quantity || !form.buyPrice) {
-      setError("All fields are required.");
-      return;
-    }
-
-    const quantity = Number(form.quantity);
-    const buyPrice = Number(form.buyPrice);
-
-    if (isNaN(quantity) || isNaN(buyPrice) || quantity <= 0 || buyPrice <= 0) {
-      setError("Quantity and price must be valid positive numbers.");
-      return;
-    }
-
-    const symbol = form.symbol.toUpperCase();
-
-    if (isEditing && editId) {
-      setPortfolio(prev => prev.map(stock => 
-        stock.id === editId 
-          ? { 
-              ...stock, 
-              symbol,
-              companyName: form.companyName,
-              quantity,
-              buyPrice,
-              transactionType: form.transactionType,
-              dateAdded: new Date()
-            }
-          : stock
-      ));
-      setSuccess("Stock updated successfully!");
-    } else {
-      const totalOwned = getTotalOwnedShares(symbol);
-      
-      if (form.transactionType === "Sell" && quantity > totalOwned) {
-        setError(`Cannot sell ${quantity} shares. You only own ${totalOwned} shares of ${symbol}.`);
-        return;
-      }
-
-      const newStock: PortfolioStock = {
-        id: crypto.randomUUID(),
-        symbol,
-        companyName: form.companyName,
-        quantity,
-        buyPrice,
-        transactionType: form.transactionType,
-        dateAdded: new Date(),
-        corporateActions: []
-      };
-
-      setPortfolio(prev => [...prev, newStock]);
-      setSuccess(`${form.transactionType} transaction for ${symbol} added successfully!`);
-    }
-
-    resetForm();
-  };
-
-  const handleAddCorporateAction = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    const { symbol, type, value, date, notes } = corporateActionForm;
-    const symbolUpper = symbol.toUpperCase();
-
-    if (!symbol || !value) {
-      setError("Symbol and value are required.");
-      return;
-    }
-
-    // Check if the user owns the stock at the action date
-    const actionDate = new Date(date);
-    const ownedSharesAtDate = getTotalOwnedShares(symbolUpper, actionDate);
+    const totalSales = portfolioStocks
+      .filter(s => s.transactionType === "Sell")
+      .reduce((sum, stock) => sum + (stock.quantity * stock.buyPrice), 0);
     
-    if (ownedSharesAtDate <= 0) {
-      setError(`You didn't own any shares of ${symbolUpper} on ${actionDate.toLocaleDateString('en-NP')}.`);
-      return;
-    }
-
-    let actionValue: number | string;
+    const netInvestment = totalInvestment - totalSales;
+    const currentValue = selectedPortfolio.total_value || netInvestment;
     
-    if (type === "cash_dividend") {
-      const numValue = Number(value);
-      if (isNaN(numValue) || numValue <= 0) {
-        setError("Dividend amount must be a positive number.");
-        return;
-      }
-      actionValue = numValue;
-      
-      // Calculate total dividend amount based on shares owned at that date
-      const totalDividendAmount = numValue * ownedSharesAtDate;
-      
-    } else if (type === "right_share" || type === "bonus_share") {
-      const numValue = Number(value);
-      if (isNaN(numValue) || numValue <= 0) {
-        setError("Percentage must be a positive number.");
-        return;
-      }
-      actionValue = numValue;
-    } else {
-      actionValue = value;
-    }
-
-    const newAction: CorporateAction = {
-      id: crypto.randomUUID(),
-      symbol: symbolUpper,
-      type,
-      value: actionValue,
-      date: actionDate,
-      notes: notes || undefined
-    };
-
-    // Update portfolio stock with corporate action
-    setPortfolio(prev => prev.map(stock => {
-      if (stock.symbol === symbolUpper) {
-        const updatedActions = [...(stock.corporateActions || []), newAction];
-        return {
-          ...stock,
-          corporateActions: updatedActions
-        };
-      }
-      return stock;
-    }));
-
-    setSuccess(`Corporate action added for ${symbol}!`);
-    setShowCorporateActionModal(false);
-    resetCorporateActionForm();
-    setSelectedStockForAction(null);
-  };
-
-  const handleEdit = (stock: PortfolioStock) => {
-    setForm({
-      symbol: stock.symbol,
-      companyName: stock.companyName,
-      quantity: stock.quantity.toString(),
-      buyPrice: stock.buyPrice.toString(),
-      transactionType: stock.transactionType
-    });
-    setIsEditing(true);
-    setEditId(stock.id);
-    setError("");
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDelete = (id: string) => {
-    setPortfolio(prev => prev.filter(s => s.id !== id));
-    setSuccess("Stock removed successfully!");
-  };
-
-  const handleDeleteCorporateAction = (stockId: string, actionId: string) => {
-    setPortfolio(prev => prev.map(stock => {
-      if (stock.id === stockId) {
-        const updatedActions = stock.corporateActions?.filter(action => action.id !== actionId) || [];
-        return {
-          ...stock,
-          corporateActions: updatedActions
-        };
-      }
-      return stock;
-    }));
-    setSuccess("Corporate action removed!");
-  };
-
-  const openCorporateActionModal = (stock?: PortfolioStock) => {
-    if (stock) {
-      setSelectedStockForAction(stock);
-      setCorporateActionForm(prev => ({
-        ...prev,
-        symbol: stock.symbol
-      }));
-    }
-    setShowCorporateActionModal(true);
-  };
-
-  // Calculate total dividends received for a symbol
-  const calculateTotalDividends = (symbol: string): number => {
-    const stockTransactions = portfolio.filter(s => s.symbol === symbol);
-    let totalDividends = 0;
+    const profitLoss = currentValue - netInvestment;
+    const profitLossPercent = netInvestment > 0 ? (profitLoss / netInvestment) * 100 : 0;
     
-    stockTransactions.forEach(stock => {
-      if (stock.corporateActions) {
-        stock.corporateActions.forEach(action => {
-          if (action.type === "cash_dividend" && typeof action.value === 'number') {
-            // Calculate shares owned at the dividend date
-            const sharesAtDividendDate = getTotalOwnedShares(symbol, new Date(action.date));
-            totalDividends += action.value * sharesAtDividendDate;
-          }
-        });
-      }
-    });
-    
-    return totalDividends;
-  };
-
-  // Calculate effective quantity after all corporate actions
-  const calculateEffectiveHolding = (symbol: string): { quantity: number; totalDividends: number } => {
-    let quantity = getTotalOwnedShares(symbol);
-    let totalDividends = 0;
-    
-    const stockTransactions = portfolio.filter(s => s.symbol === symbol);
-    
-    // Apply bonus shares first (they affect quantity)
-    stockTransactions.forEach(stock => {
-      if (stock.corporateActions) {
-        stock.corporateActions.forEach(action => {
-          if (action.type === "bonus_share" && typeof action.value === 'number') {
-            const bonusPercentage = action.value;
-            // Apply bonus to current quantity
-            const bonusShares = Math.floor((quantity * bonusPercentage) / 100);
-            quantity += bonusShares;
-          }
-        });
-      }
-    });
-    
-    // Then calculate dividends based on original holdings at each dividend date
-    stockTransactions.forEach(stock => {
-      if (stock.corporateActions) {
-        stock.corporateActions.forEach(action => {
-          if (action.type === "cash_dividend" && typeof action.value === 'number') {
-            const sharesAtDividendDate = getTotalOwnedShares(symbol, new Date(action.date));
-            totalDividends += action.value * sharesAtDividendDate;
-          }
-        });
-      }
-    });
-    
-    return { quantity, totalDividends };
-  };
-
-  const calculatePortfolioMetrics = () => {
-    const holdings = new Map<string, {
-      totalQuantity: number;
-      effectiveQuantity: number;
-      totalInvestment: number;
-      avgBuyPrice: number;
-      companyName: string;
-      lastTransactionPrice: number;
-      totalDividends: number;
-      corporateActions: CorporateAction[];
-      currentQuantity: number;
-    }>();
-
-    portfolio.forEach(stock => {
-      if (!holdings.has(stock.symbol)) {
-        holdings.set(stock.symbol, {
-          totalQuantity: 0,
-          effectiveQuantity: 0,
-          totalInvestment: 0,
-          avgBuyPrice: 0,
-          companyName: stock.companyName,
-          lastTransactionPrice: stock.buyPrice,
-          totalDividends: 0,
-          corporateActions: [],
-          currentQuantity: 0
-        });
-      }
-      
-      const holding = holdings.get(stock.symbol)!;
-      
-      if (stock.transactionType === "Buy") {
-        const newTotalQuantity = holding.totalQuantity + stock.quantity;
-        const newTotalInvestment = holding.totalInvestment + (stock.quantity * stock.buyPrice);
-        holding.totalQuantity = newTotalQuantity;
-        holding.totalInvestment = newTotalInvestment;
-        holding.avgBuyPrice = newTotalInvestment / newTotalQuantity;
-        holding.lastTransactionPrice = stock.buyPrice;
-      } else {
-        const avgCost = holding.avgBuyPrice;
-        holding.totalQuantity -= stock.quantity;
-        const soldValue = stock.quantity * avgCost;
-        holding.totalInvestment = Math.max(0, holding.totalInvestment - soldValue);
-        holding.lastTransactionPrice = stock.buyPrice;
-      }
-
-      // Add corporate actions
-      if (stock.corporateActions?.length) {
-        holding.corporateActions = [...holding.corporateActions, ...stock.corporateActions];
-      }
-    });
-
-    let totalInvestment = 0;
-    let totalCurrentValue = 0;
-    let totalEffectiveValue = 0;
-    let totalShares = 0;
-    let totalDividends = 0;
-    let bestPerformer = { symbol: "", gain: -Infinity };
-    let worstPerformer = { symbol: "", gain: Infinity };
-
-    holdings.forEach((holding, symbol) => {
-      if (holding.totalQuantity > 0) {
-        totalInvestment += holding.totalInvestment;
-        totalShares += holding.totalQuantity;
-        
-        // Calculate effective holding after corporate actions
-        const effectiveHolding = calculateEffectiveHolding(symbol);
-        holding.effectiveQuantity = effectiveHolding.quantity;
-        holding.totalDividends = effectiveHolding.totalDividends;
-        holding.currentQuantity = holding.totalQuantity; // Current owned quantity
-        
-        totalDividends += holding.totalDividends;
-        
-        const stockInfo = allStocks.find(s => s.symbol === symbol);
-        const latestPrice = stockInfo?.lastTradedPrice || 
-                           stockInfo?.currentPrice || 
-                           stockInfo?.close || 
-                           holding.lastTransactionPrice;
-        
-        // Current value based on current quantity
-        const currentValue = holding.currentQuantity * latestPrice;
-        totalCurrentValue += currentValue;
-        
-        // Gain based on current holdings
-        const gain = ((currentValue - holding.totalInvestment) / holding.totalInvestment) * 100;
-        if (gain > bestPerformer.gain) {
-          bestPerformer = { symbol, gain };
-        }
-        if (gain < worstPerformer.gain) {
-          worstPerformer = { symbol, gain };
-        }
-      }
-    });
-
-    const profitLoss = totalCurrentValue - totalInvestment + totalDividends;
-    const profitLossPercentage = totalInvestment > 0 ? (profitLoss / totalInvestment) * 100 : 0;
-    const overallReturn = totalInvestment > 0 ? ((totalCurrentValue + totalDividends - totalInvestment) / totalInvestment) * 100 : 0;
-
     return {
-      totalInvestment,
-      totalCurrentValue,
-      totalEffectiveValue,
-      totalShares,
-      totalDividends,
+      totalInvestment: netInvestment,
+      currentValue,
       profitLoss,
-      profitLossPercentage,
-      overallReturn,
-      bestPerformer,
-      worstPerformer,
-      holdings: Array.from(holdings.entries()).filter(([_, h]) => h.totalQuantity > 0),
-      totalHoldings: holdings.size,
-      averageReturn: profitLossPercentage,
-      isProfitable: profitLoss >= 0
+      profitLossPercent,
+      holdingsCount: portfolioStocks.filter(s => s.transactionType === "Buy").length
     };
   };
 
-  const metrics = calculatePortfolioMetrics();
+  const metrics = calculateMetrics();
 
-  const getLatestPrice = (symbol: string) => {
-    const stockInfo = allStocks.find(s => s.symbol === symbol);
-    return stockInfo?.lastTradedPrice || stockInfo?.currentPrice || stockInfo?.close || 0;
+  // Filter portfolio stocks
+  const filteredStocks = portfolioStocks.filter(stock =>
+    stock.symbol.toLowerCase().includes(filterSymbol.toLowerCase()) ||
+    stock.companyName.toLowerCase().includes(filterSymbol.toLowerCase())
+  );
+
+  // Copy portfolio ID
+  const copyPortfolioId = (id: number) => {
+    navigator.clipboard.writeText(id.toString());
+    setCopiedId(id.toString());
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleRefreshPrices = async () => {
-    await fetchAllStocks();
-    setSuccess("Stock prices updated successfully!");
+  // Clear messages
+  const clearMessages = () => {
+    setError("");
+    setSuccess("");
   };
 
-  const exportPortfolio = () => {
-    const data = {
-      portfolio,
-      summary: metrics,
-      exportDate: new Date().toISOString()
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `nepse-portfolio-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-  };
+  // Portfolio selector component
+  const PortfolioSelector = () => (
+    <div className="mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Your Portfolios</h2>
+          <p className="text-gray-600 dark:text-gray-400">Manage and track multiple investment portfolios</p>
+        </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center"
+        >
+          <FaPlusCircle className="mr-2" />
+          New Portfolio
+        </button>
+      </div>
+      
+      {isLoading.portfolios ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      ) : portfolios.length === 0 ? (
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+            <FaChartLine className="w-10 h-10 text-blue-400 dark:text-blue-500" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-3">
+            No portfolios yet
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+            Create your first portfolio to start tracking your investments
+          </p>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all"
+          >
+            Create First Portfolio
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {portfolios.map(portfolio => (
+            <motion.div
+              key={portfolio.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              whileHover={{ y: -5 }}
+              className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border-2 transition-all duration-300 cursor-pointer ${
+                selectedPortfolio?.id === portfolio.id
+                  ? 'border-blue-500 shadow-xl'
+                  : 'border-transparent hover:border-gray-200 dark:hover:border-gray-700'
+              }`}
+              onClick={() => {
+                setSelectedPortfolio(portfolio);
+                fetchPortfolioData(portfolio.id);
+              }}
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                        {portfolio.name}
+                      </h3>
+                      <div className="relative" ref={portfolioMenuRef}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowPortfolioMenu(showPortfolioMenu === portfolio.id ? null : portfolio.id);
+                          }}
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        >
+                          <FaEllipsisV className="text-gray-500" />
+                        </button>
+                        
+                        <AnimatePresence>
+                          {showPortfolioMenu === portfolio.id && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.95 }}
+                              className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 z-10"
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditPortfolioForm({
+                                    name: portfolio.name,
+                                    description: portfolio.description || ""
+                                  });
+                                  setShowEditModal(true);
+                                  setShowPortfolioMenu(null);
+                                }}
+                                className="w-full px-4 py-3 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+                              >
+                                <FaEdit className="mr-3 text-blue-500" />
+                                Edit Portfolio
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedPortfolio(portfolio);
+                                  setShowDeleteConfirm(true);
+                                  setShowPortfolioMenu(null);
+                                }}
+                                className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
+                              >
+                                <FaTrash className="mr-3" />
+                                Delete Portfolio
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  copyPortfolioId(portfolio.id);
+                                  setShowPortfolioMenu(null);
+                                }}
+                                className="w-full px-4 py-3 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
+                              >
+                                {copiedId === portfolio.id.toString() ? (
+                                  <>
+                                    <FaCheck className="mr-3 text-green-500" />
+                                    Copied!
+                                  </>
+                                ) : (
+                                  <>
+                                    <FaCopy className="mr-3 text-gray-500" />
+                                    Copy ID
+                                  </>
+                                )}
+                              </button>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                    {portfolio.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                        {portfolio.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">Initial Balance:</span>
+                    <span className="font-bold">Rs. {portfolio.initial_balance.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">Holdings:</span>
+                    <span className="font-bold">{portfolio.holdings_count || 0} stocks</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500 dark:text-gray-400 text-sm">Total Value:</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                      Rs. {portfolio.total_value?.toLocaleString() || '0'}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
+                    <span>Created {new Date(portfolio.created_at).toLocaleDateString()}</span>
+                    {selectedPortfolio?.id === portfolio.id && (
+                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
+                        Selected
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
-  const importPortfolio = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target?.result as string);
-        if (data.portfolio) {
-          setPortfolio(data.portfolio.map((stock: any) => ({
-            ...stock,
-            dateAdded: new Date(stock.dateAdded),
-            corporateActions: stock.corporateActions?.map((action: any) => ({
-              ...action,
-              date: new Date(action.date)
-            })) || []
-          })));
-          setSuccess("Portfolio imported successfully!");
-        }
-      } catch (error) {
-        setError("Failed to import portfolio. Invalid file format.");
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  const getActionIcon = (type: string) => {
-    switch (type) {
-      case "cash_dividend": return <FaMoneyBill className="text-emerald-500" />;
-      case "right_share": return <FaShareAlt className="text-blue-500" />;
-      case "bonus_share": return <FaGift className="text-purple-500" />;
-      default: return <FaStickyNote className="text-gray-500" />;
-    }
-  };
-
-  const getActionColor = (type: string) => {
-    switch (type) {
-      case "cash_dividend": return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300";
-      case "right_share": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
-      case "bonus_share": return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300";
-      default: return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300";
-    }
-  };
-
-  const filteredPortfolio = filterSymbol 
-    ? portfolio.filter(stock => 
-        stock.symbol.toLowerCase().includes(filterSymbol.toLowerCase()) ||
-        stock.companyName.toLowerCase().includes(filterSymbol.toLowerCase())
-      )
-    : portfolio;
-
-  // Get unique owned symbols for corporate action suggestions
-  const ownedSymbols = Array.from(new Set(portfolio.filter(stock => getTotalOwnedShares(stock.symbol) > 0).map(stock => stock.symbol)));
-
-  // Get all corporate actions sorted by date
-  const getAllCorporateActions = () => {
-    const allActions: Array<CorporateAction & { stockSymbol: string; quantity: number }> = [];
+  // Portfolio details component
+  const PortfolioDetails = () => {
+    if (!selectedPortfolio) return null;
     
-    portfolio.forEach(stock => {
-      if (stock.corporateActions?.length) {
-        stock.corporateActions.forEach(action => {
-          allActions.push({
-            ...action,
-            stockSymbol: stock.symbol,
-            quantity: getTotalOwnedShares(stock.symbol, new Date(action.date))
-          });
-        });
-      }
-    });
-    
-    return allActions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  };
-
-  // Calculate total corporate action value for display
-  const calculateCorporateActionValue = (action: CorporateAction, quantity: number) => {
-    if (action.type === "cash_dividend" && typeof action.value === 'number') {
-      return action.value * quantity;
-    }
-    return null;
+    return (
+      <div className="mb-8">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                {selectedPortfolio.name}
+              </h1>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                  title="Edit Portfolio"
+                >
+                  <FaEdit className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                  title="Delete Portfolio"
+                >
+                  <FaTrash className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            {selectedPortfolio.description && (
+              <p className="text-gray-600 dark:text-gray-400 mb-2">
+                {selectedPortfolio.description}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-3 text-sm text-gray-500 dark:text-gray-400">
+              <span className="flex items-center">
+                <FaLock className="mr-1" />
+                Portfolio ID: {selectedPortfolio.id}
+              </span>
+              <span>•</span>
+              <span>Created: {new Date(selectedPortfolio.created_at).toLocaleDateString()}</span>
+            </div>
+          </div>
+          
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowStockModal(true)}
+              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center"
+            >
+              <FaPlusCircle className="mr-2" />
+              Add Stock
+            </button>
+            <button
+              onClick={() => fetchPortfolioData(selectedPortfolio.id)}
+              disabled={isLoading.portfolio}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center disabled:opacity-50"
+            >
+              <FaSync className={`mr-2 ${isLoading.portfolio ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </div>
+        
+        {/* Metrics Cards */}
+        {metrics && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+                  <FaWallet className="w-6 h-6" />
+                </div>
+                <button
+                  onClick={() => setShowTotalValue(!showTotalValue)}
+                  className="p-2 hover:bg-white/20 rounded-lg"
+                >
+                  {showTotalValue ? <FaEye className="w-4 h-4" /> : <FaEyeSlash className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-sm font-medium opacity-90 mb-1">Total Investment</p>
+              <p className="text-2xl font-bold">
+                {showTotalValue ? `Rs. ${metrics.totalInvestment.toLocaleString('en-NP', { minimumFractionDigits: 2 })}` : '••••••'}
+              </p>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-5 text-white shadow-xl"
+            >
+              <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm mb-4 w-fit">
+                <FaChartLine className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-medium opacity-90 mb-1">Current Value</p>
+              <p className="text-2xl font-bold">
+                Rs. {metrics.currentValue.toLocaleString('en-NP', { minimumFractionDigits: 2 })}
+              </p>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-xl"
+            >
+              <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm mb-4 w-fit">
+                <FaLayerGroup className="w-6 h-6" />
+              </div>
+              <p className="text-sm font-medium opacity-90 mb-1">Total Holdings</p>
+              <p className="text-2xl font-bold">{metrics.holdingsCount}</p>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className={`bg-gradient-to-br rounded-2xl p-5 text-white shadow-xl ${
+                metrics.profitLoss >= 0 
+                  ? 'from-emerald-500 to-green-600' 
+                  : 'from-red-500 to-orange-600'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+                  {metrics.profitLoss >= 0 ? (
+                    <FaArrowUp className="w-6 h-6" />
+                  ) : (
+                    <FaArrowDown className="w-6 h-6" />
+                  )}
+                </div>
+                <FaPercentage className="w-5 h-5 opacity-90" />
+              </div>
+              <p className="text-sm font-medium opacity-90 mb-1">Total P&L</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-2xl font-bold">
+                    {metrics.profitLoss >= 0 ? '+' : ''}Rs. {Math.abs(metrics.profitLoss).toLocaleString('en-NP', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <span className="text-sm font-medium px-3 py-1 rounded-full bg-white/20">
+                  {metrics.profitLossPercent.toFixed(2)}%
+                </span>
+              </div>
+            </motion.div>
+          </div>
+        )}
+        
+        {/* Holdings Table */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Portfolio Holdings ({filteredStocks.length})
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  All stocks in this portfolio
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Filter stocks..."
+                    value={filterSymbol}
+                    onChange={(e) => setFilterSymbol(e.target.value)}
+                    className="pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-900/50">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Symbol
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Company
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Quantity
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Buy Price
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Date Added
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {isLoading.portfolio ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      <div className="flex justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredStocks.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center">
+                      <div className="text-gray-500 dark:text-gray-400">
+                        No stocks found in this portfolio. Add your first stock!
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  filteredStocks.map((stock) => (
+                    <tr key={stock.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                      <td className="px-6 py-4">
+                        <span className="font-bold text-gray-900 dark:text-white">
+                          {stock.symbol}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900 dark:text-white">
+                          {stock.companyName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-medium">{stock.quantity}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="font-medium">Rs. {stock.buyPrice.toFixed(2)}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                          stock.transactionType === 'Buy'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        }`}>
+                          {stock.transactionType}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
+                          {stock.dateAdded.toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => handleDeleteStock(stock.id)}
+                          className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                          title="Delete Stock"
+                        >
+                          <FaTrash className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Portfolio Selector */}
-      <div className="mb-4 flex items-center gap-2">
-        <label htmlFor="portfolio-select" className="font-medium">Select Portfolio:</label>
-        <select
-          id="portfolio-select"
-          value={selectedPortfolioId ?? ''}
-          onChange={e => setSelectedPortfolioId(Number(e.target.value))}
-          className="border rounded px-2 py-1"
-        >
-          <option value="">-- Choose --</option>
-          {portfolios.map(p => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-        <button
-          className="ml-2 px-2 py-1 bg-blue-500 text-white rounded"
-          onClick={async () => {
-            const name = prompt('Enter new portfolio name (e.g., Me, Father, Mother):');
-            if (name) {
-              // TODO: Replace with actual user_id logic
-              const user_id = 1;
-              const res = await fetch('/api/portfolios', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id, name })
-              });
-              if (res.ok) {
-                fetchPortfolios();
-              } else {
-                setError('Failed to create portfolio');
-              }
-            }
-          }}
-        >+ Add Portfolio</button>
-      </div>
-      {/* Navigation Bar */}
+      {/* Debug info for development */}
+      {process.env.NODE_ENV === 'development' && debugInfo && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Debug: {debugInfo}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
       <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -812,285 +967,495 @@ export default function NepsePortfolio() {
               </div>
               <div>
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">
-                  NEPSE Portfolio Pro
+                  Multi-Portfolio Manager
                 </span>
                 <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
-                  Smart Investment Tracker
+                  Advanced Investment Tracking
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-4">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                <FaCalendarAlt className="inline mr-2" />
+                {new Date().toLocaleDateString('en-NP')}
+              </div>
               <button
-                onClick={handleRefreshPrices}
-                disabled={isLoadingStocks}
-                className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 flex items-center shadow-md hover:shadow-xl"
+                onClick={() => window.location.href = '/dashboard'}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-medium hover:shadow-lg transition-all shadow-md"
               >
-                {isLoadingStocks ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Updating...
-                  </>
-                ) : (
-                  <>
-                    <FaDatabase className="mr-2" />
-                    Refresh Prices
-                  </>
-                )}
+                Back to Dashboard
               </button>
-              <Link 
-                href="/" 
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-medium hover:shadow-lg transition-all shadow-md hover:shadow-xl flex items-center"
-              >
-                <FaArrowUp className="mr-2 rotate-45" />
-                Back to Home
-              </Link>
             </div>
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                Investment Portfolio
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Track, analyze, and optimize your NEPSE investments
-              </p>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full">
-                <FaCalendarAlt className="inline mr-2" />
-                {new Date().toLocaleDateString('en-NP', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </div>
-              <div className={`px-3 py-1 rounded-full text-sm font-medium flex items-center ${metrics.isProfitable ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                <FaArrowUp className={`mr-2 ${metrics.isProfitable ? 'text-emerald-500' : 'text-red-500'}`} />
-                {metrics.isProfitable ? 'Profit' : 'Loss'}: {Math.abs(metrics.overallReturn).toFixed(2)}%
-              </div>
-            </div>
-          </div>
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Messages */}
+        <AnimatePresence>
+          {(error || success) && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="mb-6"
+            >
+              {error && (
+                <div className="p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <FaInfoCircle className="text-red-500 mr-3 flex-shrink-0" />
+                      <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
+                    </div>
+                    <button
+                      onClick={clearMessages}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                </div>
+              )}
+              {success && (
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <FaInfoCircle className="text-emerald-500 mr-3 flex-shrink-0" />
+                      <p className="text-emerald-600 dark:text-emerald-400 font-medium">{success}</p>
+                    </div>
+                    <button
+                      onClick={clearMessages}
+                      className="text-emerald-500 hover:text-emerald-700"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {/* Enhanced Summary Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {/* Total Investment Card */}
+        {/* Portfolio Selector */}
+        <PortfolioSelector />
+        
+        {/* Portfolio Details */}
+        {selectedPortfolio && <PortfolioDetails />}
+      </main>
+
+      {/* Add Portfolio Modal */}
+      <AnimatePresence>
+        {showAddModal && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowAddModal(false)}
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
-                <FaWallet className="w-6 h-6" />
-              </div>
-              <button
-                onClick={() => setShowTotalValue(!showTotalValue)}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-              >
-                {showTotalValue ? <FaEye className="w-4 h-4" /> : <FaEyeSlash className="w-4 h-4" />}
-              </button>
-            </div>
-            <p className="text-sm font-medium opacity-90 mb-1">Total Investment</p>
-            <p className="text-2xl font-bold">
-              {showTotalValue ? `Rs. ${metrics.totalInvestment.toLocaleString('en-NP', { minimumFractionDigits: 2 })}` : '••••••'}
-            </p>
-            <div className="mt-4 pt-3 border-t border-white/20">
-              <p className="text-xs opacity-75">Based on purchase prices</p>
-            </div>
-          </motion.div>
-
-          {/* Current Value Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
-          >
-            <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm mb-4 w-fit">
-              <FaChartLine className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-medium opacity-90 mb-1">Current Market Value</p>
-            <p className="text-2xl font-bold">
-              Rs. {metrics.totalCurrentValue.toLocaleString('en-NP', { minimumFractionDigits: 2 })}
-            </p>
-            <div className="mt-4 pt-3 border-t border-white/20">
-              <p className="text-xs opacity-75">Real-time NEPSE prices</p>
-            </div>
-          </motion.div>
-
-          {/* Total Dividends Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
-          >
-            <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm mb-4 w-fit">
-              <FaPiggyBank className="w-6 h-6" />
-            </div>
-            <p className="text-sm font-medium opacity-90 mb-1">Dividends Earned</p>
-            <p className="text-2xl font-bold">
-              Rs. {metrics.totalDividends.toLocaleString('en-NP', { minimumFractionDigits: 2 })}
-            </p>
-            <div className="mt-4 pt-3 border-t border-white/20">
-              <p className="text-xs opacity-75">Passive income</p>
-            </div>
-          </motion.div>
-
-          {/* Total P&L Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className={`bg-gradient-to-br rounded-2xl p-5 text-white shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 ${
-              metrics.profitLoss >= 0 
-                ? 'from-emerald-500 to-green-600' 
-                : 'from-red-500 to-orange-600'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
-                {metrics.profitLoss >= 0 ? (
-                  <FaArrowUp className="w-6 h-6" />
-                ) : (
-                  <FaArrowDown className="w-6 h-6" />
-                )}
-              </div>
-              <FaPercentage className="w-5 h-5 opacity-90" />
-            </div>
-            <p className="text-sm font-medium opacity-90 mb-1">Total P&L</p>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold">
-                  {metrics.profitLoss >= 0 ? '+' : ''}Rs. {Math.abs(metrics.profitLoss).toLocaleString('en-NP', { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-              <span className="text-sm font-medium px-3 py-1 rounded-full bg-white/20">
-                {metrics.profitLossPercentage.toFixed(2)}%
-              </span>
-            </div>
-            <div className="mt-4 pt-3 border-t border-white/20">
-              <p className="text-xs opacity-75">Unrealized gains/losses</p>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Add Transaction & Holdings */}
-          <div className="lg:col-span-2">
-            {/* Add Transaction Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden mb-6">
-              <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
-                <div className="flex items-center justify-between">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex justify-between items-center">
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-                      <FaPlusCircle className="mr-3 text-blue-500" />
-                      {isEditing ? 'Edit Transaction' : 'Add New Transaction'}
-                    </h2>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Create New Portfolio
+                    </h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      Record your buy/sell transactions
+                      Maximum 5 portfolios per user
                     </p>
                   </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    {portfolio.length} total transactions
-                  </div>
+                  <button
+                    onClick={() => setShowAddModal(false)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  >
+                    <FaTimes className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
-              <form onSubmit={handleAdd} className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <form onSubmit={handleCreatePortfolio} className="p-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Portfolio Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={portfolioForm.name}
+                      onChange={(e) => setPortfolioForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="e.g., Retirement Fund, Trading Account"
+                      required
+                      maxLength={50}
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Must be unique among your portfolios
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Description (Optional)
+                    </label>
+                    <textarea
+                      value={portfolioForm.description}
+                      onChange={(e) => setPortfolioForm(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      placeholder="Describe the purpose of this portfolio..."
+                      rows={3}
+                      maxLength={200}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Initial Balance (Rs.)
+                    </label>
+                    <div className="relative">
+                      <FaRupeeSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={portfolioForm.initial_balance}
+                        onChange={(e) => setPortfolioForm(prev => ({ ...prev, initial_balance: e.target.value }))}
+                        className="w-full pl-10 px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+
+                  {portfolios.length >= 5 && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-xl">
+                      <p className="text-amber-600 dark:text-amber-400 text-sm">
+                        ⚠️ You have reached the maximum limit of 5 portfolios
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-3 mt-8">
+                  <button
+                    type="submit"
+                    disabled={isCreating || portfolios.length >= 5}
+                    className={`flex-1 px-6 py-3 font-medium rounded-xl transition-all flex items-center justify-center ${
+                      isCreating || portfolios.length >= 5
+                        ? 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg'
+                    }`}
+                  >
+                    {isCreating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <FaPlusCircle className="mr-2" />
+                        Create Portfolio
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddModal(false);
+                      resetPortfolioForm();
+                    }}
+                    className="px-6 py-3 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Portfolio Modal */}
+      <AnimatePresence>
+        {showEditModal && selectedPortfolio && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowEditModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Edit Portfolio
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Update portfolio details
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  >
+                    <FaTimes className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdatePortfolio} className="p-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Portfolio Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={editPortfolioForm.name}
+                      onChange={(e) => setEditPortfolioForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      required
+                      maxLength={50}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={editPortfolioForm.description}
+                      onChange={(e) => setEditPortfolioForm(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                      rows={3}
+                      maxLength={200}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-8">
+                  <button
+                    type="submit"
+                    disabled={isCreating}
+                    className={`flex-1 px-6 py-3 font-medium rounded-xl transition-all flex items-center justify-center ${
+                      isCreating
+                        ? 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg'
+                    }`}
+                  >
+                    {isCreating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Updating...
+                      </>
+                    ) : (
+                      <>
+                        <FaEdit className="mr-2" />
+                        Update Portfolio
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="px-6 py-3 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && selectedPortfolio && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Delete Portfolio
+                </h3>
+              </div>
+
+              <div className="p-6">
+                <div className="flex items-center justify-center mb-6">
+                  <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                    <FaTrash className="w-8 h-8 text-red-500" />
+                  </div>
+                </div>
+
+                <div className="text-center mb-6">
+                  <p className="text-gray-700 dark:text-gray-300 mb-2">
+                    Are you sure you want to delete
+                  </p>
+                  <p className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    "{selectedPortfolio.name}"?
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    This action cannot be undone. All portfolio data will be permanently deleted.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDeletePortfolio}
+                    disabled={isDeleting}
+                    className={`flex-1 px-6 py-3 font-medium rounded-xl transition-all flex items-center justify-center ${
+                      isDeleting
+                        ? 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-red-500 to-orange-600 text-white hover:shadow-lg'
+                    }`}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <FaTrash className="mr-2" />
+                        Delete Portfolio
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-6 py-3 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Stock Modal */}
+      <AnimatePresence>
+        {showStockModal && selectedPortfolio && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => {
+              setShowStockModal(false);
+              resetStockForm();
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Add Stock to {selectedPortfolio.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      Add a buy/sell transaction
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowStockModal(false);
+                      resetStockForm();
+                    }}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  >
+                    <FaTimes className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleAddStock} className="p-6">
+                <div className="space-y-5">
                   {/* Symbol Input */}
                   <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                      <FaSearch className="mr-2 text-blue-500" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Stock Symbol *
                     </label>
                     <div className="relative">
                       <input
                         ref={inputRef}
-                        name="symbol"
+                        type="text"
                         value={form.symbol}
-                        onChange={handleChange}
+                        onChange={handleStockSearch}
                         onFocus={() => setShowSuggestions(true)}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        placeholder="Search symbol or company..."
+                        placeholder="Search symbol..."
                         required
                       />
                       
                       <AnimatePresence>
-                        {(showSuggestions || isLoadingSuggestions) && (
+                        {showSuggestions && (
                           <motion.div
                             initial={{ opacity: 0, y: -10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden"
                           >
-                            {isLoadingSuggestions ? (
-                              <div className="p-4 text-center">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Searching stocks...</p>
-                              </div>
-                            ) : suggestions.length > 0 ? (
-                              <>
-                                <div className="px-4 py-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 border-b border-gray-100 dark:border-gray-700">
-                                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                                    Select a stock
-                                  </p>
-                                </div>
-                                <div className="max-h-64 overflow-y-auto">
-                                  {suggestions.map((stock) => {
-                                    const ownedShares = getTotalOwnedShares(stock.symbol);
-                                    const latestPrice = stock.lastTradedPrice || stock.currentPrice || stock.close || 0;
-                                    const changeColor = stock.change >= 0 ? 'text-emerald-600' : 'text-red-600';
-                                    return (
-                                      <motion.div
-                                        key={stock.symbol}
-                                        whileHover={{ scale: 1.005 }}
-                                        className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-800 cursor-pointer border-b last:border-b-0 border-gray-100 dark:border-gray-800 transition-colors"
-                                        onMouseDown={() => handleSuggestionClick(stock)}
-                                      >
-                                        <div className="flex justify-between items-center">
-                                          <div className="flex-1">
-                                            <div className="flex items-center space-x-3">
-                                              <span className="font-bold text-blue-600 dark:text-blue-400 text-lg">
-                                                {stock.symbol}
-                                              </span>
-                                              {ownedShares > 0 && (
-                                                <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
-                                                  Owned: {ownedShares}
-                                                </span>
-                                              )}
-                                            </div>
-                                            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                                              {stock.name}
-                                            </p>
-                                          </div>
-                                          <div className="text-right">
-                                            <div className="font-bold text-gray-900 dark:text-white">
-                                              Rs. {latestPrice.toLocaleString('en-NP', { minimumFractionDigits: 2 })}
-                                            </div>
-                                            {stock.change !== undefined && (
-                                              <div className={`text-xs font-medium ${changeColor}`}>
-                                                {stock.change >= 0 ? '+' : ''}{stock.change} ({stock.changePercent?.toFixed(2)}%)
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </motion.div>
-                                    );
-                                  })}
-                                </div>
-                              </>
-                            ) : form.symbol ? (
-                              <div className="p-4 text-center">
-                                <p className="text-sm text-gray-500 dark:text-gray-400">No stocks found</p>
-                              </div>
-                            ) : null}
+                            <div className="max-h-64 overflow-y-auto">
+                              {stockSuggestions.length === 0 ? (
+                                <div className="px-4 py-3 text-gray-500 dark:text-gray-400">No results found</div>
+                              ) : (
+                                stockSuggestions.map((stock) => (
+                                  <div
+                                    key={stock.symbol}
+                                    className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-800 cursor-pointer border-b last:border-b-0 border-gray-100 dark:border-gray-800"
+                                    onClick={() => {
+                                      selectSuggestion(stock);
+                                      setShowSuggestions(false);
+                                    }}
+                                  >
+                                    <div className="flex justify-between items-center">
+                                      <div>
+                                        <span className="font-bold text-blue-600 dark:text-blue-400" dangerouslySetInnerHTML={{ __html: highlightMatch(stock.symbol, form.symbol) }} />
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 truncate" dangerouslySetInnerHTML={{ __html: highlightMatch(stock.name, form.symbol) }} />
+                                      </div>
+                                      {stock.currentPrice && (
+                                        <span className="font-bold">
+                                          Rs. {stock.currentPrice.toFixed(2)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -1099,14 +1464,13 @@ export default function NepsePortfolio() {
 
                   {/* Company Name */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                      <FaBuilding className="mr-2 text-blue-500" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Company Name *
                     </label>
                     <input
-                      name="companyName"
+                      type="text"
                       value={form.companyName}
-                      onChange={handleChange}
+                      onChange={(e) => setForm(prev => ({ ...prev, companyName: e.target.value }))}
                       className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                       placeholder="Enter company name"
                       required
@@ -1116,44 +1480,43 @@ export default function NepsePortfolio() {
                   {/* Quantity & Price */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                        <FaHashtag className="mr-2 text-blue-500" />
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Quantity *
                       </label>
                       <input
-                        name="quantity"
                         type="number"
                         min="1"
                         step="1"
                         value={form.quantity}
-                        onChange={handleChange}
+                        onChange={(e) => setForm(prev => ({ ...prev, quantity: e.target.value }))}
                         className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         placeholder="0"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                        <FaMoneyBillWave className="mr-2 text-blue-500" />
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Price per Share *
                       </label>
-                      <input
-                        name="buyPrice"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={form.buyPrice}
-                        onChange={handleChange}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        placeholder="0.00"
-                        required
-                      />
+                      <div className="relative">
+                        <FaRupeeSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={form.buyPrice}
+                          onChange={(e) => setForm(prev => ({ ...prev, buyPrice: e.target.value }))}
+                          className="w-full pl-10 px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                          placeholder="0.00"
+                          required
+                        />
+                      </div>
                     </div>
                   </div>
 
                   {/* Transaction Type */}
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                       Transaction Type *
                     </label>
                     <div className="grid grid-cols-2 gap-4">
@@ -1178,825 +1541,28 @@ export default function NepsePortfolio() {
                             : "bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800"
                         }`}
                       >
-                        <FaMinusCircle />
+                        <div className="w-5 h-5 flex items-center justify-center">
+                          <div className="w-4 h-0.5 bg-current"></div>
+                        </div>
                         <span>Sell</span>
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Messages */}
-                <AnimatePresence>
-                  {(error || success) && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="mt-6"
-                    >
-                      {error && (
-                        <div className="p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl">
-                          <div className="flex items-center">
-                            <FaInfoCircle className="text-red-500 mr-3 flex-shrink-0" />
-                            <p className="text-red-600 dark:text-red-400 font-medium">{error}</p>
-                          </div>
-                        </div>
-                      )}
-                      {success && (
-                        <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl">
-                          <div className="flex items-center">
-                            <FaInfoCircle className="text-emerald-500 mr-3 flex-shrink-0" />
-                            <p className="text-emerald-600 dark:text-emerald-400 font-medium">{success}</p>
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Form Actions */}
-                <div className="flex space-x-4 mt-8">
+                <div className="flex gap-3 mt-8">
                   <button
                     type="submit"
-                    className={`px-8 py-3 text-white font-medium rounded-xl hover:shadow-lg transition-all flex items-center ${
-                      isEditing 
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
-                    }`}
-                  >
-                    <FaPlusCircle className="mr-3" />
-                    {isEditing ? 'Update Transaction' : 'Add Transaction'}
-                  </button>
-                  {isEditing && (
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="px-6 py-3 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      Cancel Edit
-                    </button>
-                  )}
-                </div>
-              </form>
-            </div>
-
-            {/* Holdings Summary */}
-            {metrics.holdings.length > 0 ? (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-                <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-gray-900 dark:to-gray-800">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-                        <FaLayerGroup className="mr-3 text-emerald-500" />
-                        Current Holdings ({metrics.holdings.length})
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Total Value: Rs. {metrics.totalCurrentValue.toLocaleString('en-NP', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <div className="relative">
-                        <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                        <input
-                          type="text"
-                          placeholder="Filter stocks..."
-                          value={filterSymbol}
-                          onChange={(e) => setFilterSymbol(e.target.value)}
-                          className="pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                        />
-                      </div>
-                      <button
-                        onClick={exportPortfolio}
-                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center text-sm"
-                      >
-                        <FaDownload className="mr-2" />
-                        Export
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {metrics.holdings.map(([symbol, holding]) => {
-                      const latestPrice = getLatestPrice(symbol);
-                      const currentValue = holding.currentQuantity * latestPrice;
-                      const profitLoss = currentValue - holding.totalInvestment;
-                      const profitLossPercent = holding.totalInvestment > 0 ? (profitLoss / holding.totalInvestment) * 100 : 0;
-                      const stock = portfolio.find(s => s.symbol === symbol);
-                      const hasCorporateActions = holding.corporateActions?.length > 0;
-                      
-                      return (
-                        <motion.div
-                          key={symbol}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 hover:shadow-lg transition-all duration-300 border border-gray-200 dark:border-gray-700"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <div className="flex items-center space-x-3 mb-2">
-                                <span className="text-2xl font-bold text-gray-900 dark:text-white">{symbol}</span>
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
-                                    {holding.currentQuantity} shares
-                                  </span>
-                                  {holding.effectiveQuantity > holding.currentQuantity && (
-                                    <span className="text-xs px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full">
-                                      +{holding.effectiveQuantity - holding.currentQuantity} bonus
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                                {holding.companyName}
-                              </p>
-                            </div>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => {
-                                  if (stock) openCorporateActionModal(stock);
-                                }}
-                                className="p-2 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg"
-                                title="Add dividend/bonus"
-                              >
-                                <FaGift className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => stock && handleEdit(stock)}
-                                className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
-                                title="Edit"
-                              >
-                                <FaEdit className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div className="space-y-3">
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-500 dark:text-gray-400">Avg. Cost:</span>
-                              <span className="font-semibold">Rs. {holding.avgBuyPrice.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-500 dark:text-gray-400">Current Price:</span>
-                              <span className="font-semibold">Rs. {latestPrice.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-500 dark:text-gray-400">Investment:</span>
-                              <span className="font-bold">Rs. {holding.totalInvestment.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-gray-500 dark:text-gray-400">Current Value:</span>
-                              <span className="font-bold">Rs. {currentValue.toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                              <span className="text-gray-500 dark:text-gray-400">P&L:</span>
-                              <span className={`font-bold text-lg ${profitLoss >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                {profitLoss >= 0 ? '+' : ''}Rs. {Math.abs(profitLoss).toFixed(2)} ({profitLossPercent.toFixed(2)}%)
-                              </span>
-                            </div>
-                            {holding.totalDividends > 0 && (
-                              <div className="flex justify-between items-center pt-3 border-t border-gray-200 dark:border-gray-700">
-                                <span className="text-gray-500 dark:text-gray-400">Dividends Received:</span>
-                                <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                                  Rs. {holding.totalDividends.toFixed(2)}
-                                </span>
-                              </div>
-                            )}
-                            {hasCorporateActions && (
-                              <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                                <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Corporate Actions:</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {holding.corporateActions?.slice(0, 3).map(action => (
-                                    <span key={action.id} className={`text-xs px-2 py-1 rounded ${getActionColor(action.type)}`}>
-                                      {action.type === 'cash_dividend' ? `Dividend: Rs. ${action.value}` :
-                                       action.type === 'bonus_share' ? `Bonus: ${action.value}%` :
-                                       action.type === 'right_share' ? `Right: ${action.value}%` : 'Other'}
-                                    </span>
-                                  ))}
-                                  {holding.corporateActions && holding.corporateActions.length > 3 && (
-                                    <span className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded">
-                                      +{holding.corporateActions.length - 3} more
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-12 text-center">
-                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
-                  <FaChartLine className="w-10 h-10 text-blue-400 dark:text-blue-500" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                  Your portfolio is empty
-                </h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
-                  Start building your investment portfolio by adding your first transaction above. Track your stocks, monitor performance, and receive dividends.
-                </p>
-                <button
-                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all"
-                >
-                  Add Your First Stock
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Right Column - Dashboard */}
-          <div className="space-y-6">
-            {/* Quick Actions Card */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <div className="p-5 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800">
-                <h3 className="font-semibold text-gray-900 dark:text-white flex items-center">
-                  <FaCoins className="mr-3 text-purple-500" />
-                  Quick Actions
-                </h3>
-              </div>
-              <div className="p-5">
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    onClick={() => openCorporateActionModal()}
-                    disabled={ownedSymbols.length === 0}
-                    className={`p-5 rounded-xl transition-all flex flex-col items-center justify-center ${
-                      ownedSymbols.length === 0
-                        ? 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:shadow-lg transform hover:-translate-y-1'
-                    }`}
-                  >
-                    <FaGift className="w-7 h-7 mb-2" />
-                    <span className="text-sm font-medium">Add Dividend</span>
-                  </button>
-                  <button
-                    onClick={() => document.getElementById('importInput')?.click()}
-                    className="p-5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all flex flex-col items-center justify-center transform hover:-translate-y-1"
-                  >
-                    <FaUpload className="w-7 h-7 mb-2" />
-                    <span className="text-sm font-medium">Import</span>
-                  </button>
-                  <button
-                    onClick={handleRefreshPrices}
-                    disabled={isLoadingStocks}
-                    className={`p-5 rounded-xl transition-all flex flex-col items-center justify-center ${
-                      isLoadingStocks
-                        ? 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:shadow-lg transform hover:-translate-y-1'
-                    }`}
-                  >
-                    {isLoadingStocks ? (
-                      <div className="animate-spin rounded-full h-7 w-7 border-b-2 border-white mb-2"></div>
-                    ) : (
-                      <FaDatabase className="w-7 h-7 mb-2" />
-                    )}
-                    <span className="text-sm font-medium">
-                      {isLoadingStocks ? 'Updating...' : 'Refresh Prices'}
-                    </span>
-                  </button>
-                  <button
-                    onClick={exportPortfolio}
-                    className="p-5 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl hover:shadow-lg transition-all flex flex-col items-center justify-center transform hover:-translate-y-1"
-                  >
-                    <FaDownload className="w-7 h-7 mb-2" />
-                    <span className="text-sm font-medium">Export</span>
-                  </button>
-                </div>
-                <input
-                  id="importInput"
-                  type="file"
-                  accept=".json"
-                  onChange={importPortfolio}
-                  className="hidden"
-                />
-                {ownedSymbols.length === 0 && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-4 text-center">
-                    Add stocks first to enable dividend tracking
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Recent Transactions & Dividends Tabs */}
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-              <div className="border-b border-gray-100 dark:border-gray-700">
-                <div className="flex">
-                  <button
-                    onClick={() => setActiveTab("transactions")}
-                    className={`flex-1 px-5 py-4 text-sm font-medium transition-colors flex items-center justify-center ${
-                      activeTab === "transactions"
-                        ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
-                        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    }`}
-                  >
-                    <FaHistory className="mr-2" />
-                    Transactions
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("dividends")}
-                    className={`flex-1 px-5 py-4 text-sm font-medium transition-colors flex items-center justify-center ${
-                      activeTab === "dividends"
-                        ? "border-b-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20"
-                        : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                    }`}
-                  >
-                    <FaMoneyBill className="mr-2" />
-                    Dividends
-                  </button>
-                </div>
-              </div>
-              
-              <div className="p-5">
-                {activeTab === "transactions" ? (
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                    {filteredPortfolio.slice(0, 10).map((stock) => {
-                      const latestPrice = getLatestPrice(stock.symbol);
-                      const currentValue = stock.quantity * latestPrice;
-                      const investment = stock.quantity * stock.buyPrice;
-                      const gain = ((currentValue - investment) / investment) * 100;
-                      
-                      return (
-                        <div key={stock.id} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl hover:shadow-md transition-shadow">
-                          <div className="flex justify-between items-start mb-3">
-                            <div>
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className="font-bold text-gray-900 dark:text-white">{stock.symbol}</span>
-                                <span className={`text-xs px-2 py-1 rounded-full ${
-                                  stock.transactionType === 'Buy'
-                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                }`}>
-                                  {stock.transactionType}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {new Date(stock.dateAdded).toLocaleDateString('en-NP')}
-                              </p>
-                            </div>
-                            <div className="flex space-x-1">
-                              <button
-                                onClick={() => handleEdit(stock)}
-                                className="p-1.5 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
-                                title="Edit"
-                              >
-                                <FaEdit className="w-3 h-3" />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(stock.id)}
-                                className="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                                title="Delete"
-                              >
-                                <FaTrash className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div className="space-y-1">
-                              <div className="flex justify-between">
-                                <span className="text-gray-500 dark:text-gray-400">Qty:</span>
-                                <span className="font-medium">{stock.quantity}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-500 dark:text-gray-400">Buy Price:</span>
-                                <span className="font-medium">Rs. {stock.buyPrice.toFixed(2)}</span>
-                              </div>
-                            </div>
-                            <div className="space-y-1">
-                              <div className="flex justify-between">
-                                <span className="text-gray-500 dark:text-gray-400">Investment:</span>
-                                <span className="font-bold">Rs. {investment.toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-500 dark:text-gray-400">Current:</span>
-                                <span className={`font-bold ${gain >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-                                  Rs. {currentValue.toFixed(2)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {filteredPortfolio.length === 0 && (
-                      <div className="text-center py-8">
-                        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-                          <FaHistory className="w-6 h-6 text-gray-400" />
-                        </div>
-                        <p className="text-gray-500 dark:text-gray-400">No transactions yet</p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                    {getAllCorporateActions()
-                      .slice(0, 10)
-                      .map((action) => {
-                        const totalValue = calculateCorporateActionValue(action, action.quantity);
-                        
-                        return (
-                          <div key={action.id} className="p-4 bg-gray-50 dark:bg-gray-900 rounded-xl hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-start mb-3">
-                              <div className="flex items-center space-x-3">
-                                <div className={`p-2 rounded-lg ${getActionColor(action.type)}`}>
-                                  {getActionIcon(action.type)}
-                                </div>
-                                <div>
-                                  <span className="font-bold text-gray-900 dark:text-white">{action.stockSymbol}</span>
-                                  <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-                                    {action.type.replace('_', ' ')}
-                                  </p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => handleDeleteCorporateAction(
-                                  portfolio.find(s => s.symbol === action.stockSymbol)?.id || '',
-                                  action.id
-                                )}
-                                className="p-1.5 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                              >
-                                <FaTrash className="w-3 h-3" />
-                              </button>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-500 dark:text-gray-400">Per Share/Unit:</span>
-                                <span className="font-bold">
-                                  {action.type === 'cash_dividend' ? 'Rs. ' : ''}
-                                  {typeof action.value === 'number' ? action.value.toFixed(2) : action.value}
-                                  {action.type === 'right_share' || action.type === 'bonus_share' ? '%' : ''}
-                                </span>
-                              </div>
-                              {totalValue && (
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-gray-500 dark:text-gray-400">Total Amount:</span>
-                                  <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                                    Rs. {totalValue.toFixed(2)}
-                                  </span>
-                                </div>
-                              )}
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-500 dark:text-gray-400">Shares at Date:</span>
-                                <span className="font-medium">{action.quantity} shares</span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-500 dark:text-gray-400">Date:</span>
-                                <span>{new Date(action.date).toLocaleDateString('en-NP')}</span>
-                              </div>
-                              {action.notes && (
-                                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                                  <p className="text-xs text-gray-600 dark:text-gray-400">{action.notes}</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    {getAllCorporateActions().length === 0 && (
-                      <div className="text-center py-8">
-                        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
-                          <FaGift className="w-6 h-6 text-gray-400" />
-                        </div>
-                        <p className="text-gray-500 dark:text-gray-400 mb-2">No corporate actions yet</p>
-                        <button
-                          onClick={() => openCorporateActionModal()}
-                          disabled={ownedSymbols.length === 0}
-                          className={`text-sm px-4 py-2 rounded-lg ${
-                            ownedSymbols.length === 0
-                              ? 'text-gray-400 cursor-not-allowed'
-                              : 'text-emerald-600 dark:text-emerald-400 hover:underline'
-                          }`}
-                        >
-                          Add your first dividend
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Portfolio Stats */}
-            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-xl">
-              <h3 className="font-semibold mb-4 flex items-center">
-                <FaChartBar className="mr-2" />
-                Portfolio Stats
-              </h3>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="opacity-90">Total Stocks</span>
-                  <span className="font-bold">{metrics.holdings.length}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="opacity-90">Total Shares</span>
-                  <span className="font-bold">{metrics.totalShares.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="opacity-90">Dividend Yield</span>
-                  <span className="font-bold">
-                    {metrics.totalInvestment > 0 
-                      ? ((metrics.totalDividends / metrics.totalInvestment) * 100).toFixed(2)
-                      : '0.00'}%
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="opacity-90">Overall Return</span>
-                  <span className={`font-bold ${metrics.overallReturn >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
-                    {metrics.overallReturn.toFixed(2)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      {/* Corporate Action Modal */}
-      <AnimatePresence>
-        {showCorporateActionModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            onClick={() => {
-              setShowCorporateActionModal(false);
-              setSelectedStockForAction(null);
-              resetCorporateActionForm();
-              setShowCorporateActionSuggestions(false);
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="p-6 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-gray-900 dark:to-gray-800">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                      Add Corporate Action
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      Record dividends, bonus shares, rights, or other actions
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowCorporateActionModal(false);
-                      setSelectedStockForAction(null);
-                      resetCorporateActionForm();
-                      setShowCorporateActionSuggestions(false);
-                    }}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  >
-                    <FaTimes className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              <form onSubmit={handleAddCorporateAction} className="p-6">
-                <div className="space-y-5">
-                  {/* Symbol Input with Validation */}
-                  <div className="relative">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Stock Symbol *
-                      {corporateActionForm.symbol && (
-                        <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
-                          getTotalOwnedShares(corporateActionForm.symbol.toUpperCase()) > 0
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                        }`}>
-                          {getTotalOwnedShares(corporateActionForm.symbol.toUpperCase()) > 0
-                            ? `${getTotalOwnedShares(corporateActionForm.symbol.toUpperCase())} shares currently owned`
-                            : 'Not owned'}
-                        </span>
-                      )}
-                    </label>
-                    <div className="relative">
-                      <input
-                        ref={corporateActionSymbolRef}
-                        name="symbol"
-                        value={corporateActionForm.symbol}
-                        onChange={handleCorporateActionChange}
-                        onFocus={() => setShowCorporateActionSuggestions(true)}
-                        className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 ${
-                          getTotalOwnedShares(corporateActionForm.symbol.toUpperCase()) > 0
-                            ? 'border-emerald-200 dark:border-emerald-700'
-                            : corporateActionForm.symbol
-                            ? 'border-red-200 dark:border-red-700'
-                            : 'border-gray-200 dark:border-gray-700'
-                        } rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all`}
-                        placeholder="Enter stock symbol..."
-                        required
-                      />
-                      
-                      {/* Suggestions for owned stocks only */}
-                      <AnimatePresence>
-                        {showCorporateActionSuggestions && corporateActionForm.symbol && (
-                          <motion.div
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden"
-                          >
-                            <div className="max-h-48 overflow-y-auto">
-                              {ownedSymbols
-                                .filter(symbol => 
-                                  symbol.toLowerCase().includes(corporateActionForm.symbol.toLowerCase())
-                                )
-                                .slice(0, 8)
-                                .map(symbol => {
-                                  const stock = allStocks.find(s => s.symbol === symbol);
-                                  const ownedShares = getTotalOwnedShares(symbol);
-                                  return (
-                                    <div
-                                      key={symbol}
-                                      className="px-4 py-3 hover:bg-emerald-50 dark:hover:bg-gray-800 cursor-pointer border-b last:border-b-0 border-gray-100 dark:border-gray-800"
-                                      onClick={() => {
-                                        handleCorporateActionSuggestionClick({ symbol, name: stock?.name || '' });
-                                        setShowCorporateActionSuggestions(false);
-                                      }}
-                                    >
-                                      <div className="flex justify-between items-center">
-                                        <div className="flex-1">
-                                          <div className="flex items-center space-x-3">
-                                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                                              {symbol}
-                                            </span>
-                                            <span className="text-xs px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full">
-                                              {ownedShares} shares
-                                            </span>
-                                          </div>
-                                          {stock && (
-                                            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                                              {stock.name}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              {ownedSymbols.filter(symbol => 
-                                symbol.toLowerCase().includes(corporateActionForm.symbol.toLowerCase())
-                              ).length === 0 && (
-                                <div className="p-4 text-center">
-                                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                                    {corporateActionForm.symbol 
-                                      ? `You don't own any shares of ${corporateActionForm.symbol}`
-                                      : 'Start typing to see your owned stocks'
-                                    }
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                    {corporateActionForm.symbol && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                        Shares owned on selected date will be calculated automatically
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Action Type */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                      Action Type *
-                    </label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {(["cash_dividend", "right_share", "bonus_share", "other"] as const).map((type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setCorporateActionForm(prev => ({ ...prev, type }))}
-                          className={`px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center space-x-2 ${
-                            corporateActionForm.type === type
-                              ? "bg-emerald-500 text-white shadow-lg"
-                              : "bg-gray-100 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800"
-                          }`}
-                        >
-                          {getActionIcon(type)}
-                          <span className="capitalize">{type.replace('_', ' ')}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Value */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Value *
-                      {corporateActionForm.type === 'cash_dividend' && corporateActionForm.value && (
-                        <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">
-                          Amount per share
-                        </span>
-                      )}
-                    </label>
-                    <div className="relative">
-                      {corporateActionForm.type === 'cash_dividend' && (
-                        <FaRupeeSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      )}
-                      <input
-                        name="value"
-                        type={corporateActionForm.type === 'other' ? 'text' : 'number'}
-                        step="0.01"
-                        min="0"
-                        value={corporateActionForm.value}
-                        onChange={handleCorporateActionChange}
-                        className={`w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all ${
-                          corporateActionForm.type === 'cash_dividend' ? 'pl-10' : ''
-                        }`}
-                        placeholder={
-                          corporateActionForm.type === 'cash_dividend' ? "Amount per share (Rs.)" :
-                          corporateActionForm.type === 'right_share' || corporateActionForm.type === 'bonus_share' ? "Percentage (%)" :
-                          "Description"
-                        }
-                        required
-                      />
-                      {(corporateActionForm.type === 'right_share' || corporateActionForm.type === 'bonus_share') && (
-                        <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500">%</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Date */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Action Date *
-                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                        (When the action occurred)
-                      </span>
-                    </label>
-                    <div className="relative">
-                      <FaCalendarAlt className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <input
-                        name="date"
-                        type="date"
-                        value={corporateActionForm.date}
-                        onChange={handleCorporateActionChange}
-                        className="w-full pl-10 px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                      />
-                    </div>
-                    {corporateActionForm.symbol && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        You owned {getTotalOwnedShares(corporateActionForm.symbol.toUpperCase(), new Date(corporateActionForm.date))} shares on this date
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Notes */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Notes (Optional)
-                    </label>
-                    <textarea
-                      name="notes"
-                      value={corporateActionForm.notes}
-                      onChange={handleCorporateActionChange}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
-                      placeholder="Additional information, source, remarks..."
-                      rows={3}
-                    />
-                  </div>
-                </div>
-
-                {/* Validation Error */}
-                {error && corporateActionForm.symbol && (
-                  <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl">
-                    <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
-                  </div>
-                )}
-
-                <div className="flex space-x-3 mt-8">
-                  <button
-                    type="submit"
-                    disabled={getTotalOwnedShares(corporateActionForm.symbol.toUpperCase(), new Date(corporateActionForm.date)) <= 0}
-                    className={`flex-1 px-6 py-3 font-medium rounded-xl transition-all flex items-center justify-center ${
-                      getTotalOwnedShares(corporateActionForm.symbol.toUpperCase(), new Date(corporateActionForm.date)) <= 0
-                        ? 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:shadow-lg'
-                    }`}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:shadow-lg transition-all flex items-center justify-center"
                   >
                     <FaPlusCircle className="mr-2" />
-                    Add Corporate Action
+                    Add Stock
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setShowCorporateActionModal(false);
-                      setSelectedStockForAction(null);
-                      resetCorporateActionForm();
-                      setShowCorporateActionSuggestions(false);
+                      setShowStockModal(false);
+                      resetStockForm();
                     }}
                     className="px-6 py-3 bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
                   >
@@ -2014,10 +1580,10 @@ export default function NepsePortfolio() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              NEPSE Portfolio Tracker • Real-time Investment Management • {new Date().getFullYear()}
+              Multi-Portfolio Manager • Advanced Investment Tracking • {new Date().getFullYear()}
             </p>
             <p className="text-gray-400 dark:text-gray-500 text-xs mt-2">
-              Note: Prices update in real-time. Portfolio data is stored locally in your browser.
+              Maximum 5 portfolios per user • Portfolio names must be unique
             </p>
           </div>
         </div>
@@ -2025,10 +1591,3 @@ export default function NepsePortfolio() {
     </div>
   );
 }
-
-// Missing icon component
-const FaMinusCircle = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 000 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-  </svg>
-);
