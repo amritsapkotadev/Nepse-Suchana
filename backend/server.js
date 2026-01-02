@@ -5,20 +5,19 @@ const db = require('./src/config/databasesetup');
 // Removed: const portfolioRoutes = require('./Routes/PortfolioRoute');
 const authRoutes = require('./src/Routes/AuthRoute');
 const watchlistRoutes = require('./src/Routes/watchlistRoute');
+const portfolioRoutes = require('./src/Routes/PortfolioRoutes');
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Middleware - MUST be before routes
-app.use(cors());
+ app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
+app.use(express.urlencoded({ extended: true }))
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/portfolio', require('./src/Routes/PortfolioRoutes'));
+app.use('/api', portfolioRoutes);
 app.use('/api/watchlist', watchlistRoutes);
-// Removed: app.use(portfolioRoutes);
-// Health check route
+
+ // Health check route
 app.get('/api/health', async (req, res) => {
   try {
     const result = await db.query('SELECT NOW()');
