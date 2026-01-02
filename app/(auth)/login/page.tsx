@@ -16,13 +16,16 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:3001/api/auth/login', {
+      // Use backend URL from env or fallback to localhost:3001
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const res = await fetch(`${backendUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
       if (res.ok && data.status === 'success') {
+        localStorage.setItem('token', data.token);
         router.push('/portfolio');
       } else {
         setError(data.message || 'Login failed. Please try again.');

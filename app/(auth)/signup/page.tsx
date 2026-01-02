@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
+import bcrypt from 'bcryptjs';
 export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -25,7 +25,7 @@ export default function Signup() {
       const res = await fetch('http://localhost:3001/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: name, password, email })
+        body: JSON.stringify({ name, password, email })
       });
       const data = await res.json();
       if (res.ok && data.status === 'success') {
@@ -38,6 +38,45 @@ export default function Signup() {
       setError('Signup failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const login = async (req, res) => {
+    const { email, password } = req.body;
+    try {
+      const result = await db.query(
+        'SELECT id, username, email, password_hash, created_at FROM users WHERE email = $1',
+        [email]
+      );
+      if (result.rows.length > 0) {
+        const user = result.rows[0];
+        const match = await bcrypt.compare(password, user.password_hash);
+        if (match) {
+          // Don't return password_hash to client
+          delete user.password_hash;
+          res.json({
+            status: 'success',
+            message: 'Login successful',
+            user
+          });
+        } else {
+          res.status(401).json({
+            status: 'error',
+            message: 'Invalid email or password'
+          });
+        }
+      } else {
+        res.status(401).json({
+          status: 'error',
+          message: 'Invalid email or password'
+        });
+      }
+    } catch (error) {
+      res.status(500).json({
+        status: 'error',
+        message: 'Database query failed',
+        error: error.message
+      });
     }
   };
 
