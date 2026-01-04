@@ -14,3 +14,4 @@ router.post('/portfolio-holdings', protectedRoute, portfolioHoldingsController.a
 router.delete('/portfolio-holdings/:id', protectedRoute, portfolioHoldingsController.deletePortfolioHolding);
 
 module.exports = router;
+ 
