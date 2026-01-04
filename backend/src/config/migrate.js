@@ -26,8 +26,17 @@ async function runMigrations() {
       path.join(__dirname, '../models/portfolio.sql'),
       'utf8'
     );
+    // Read and execute the demotrading model SQL
+
+    const demotradingModelSQL = fs.readFileSync(
+      path.join(__dirname, '../models/demotrading.sql'),
+      'utf8'
+    );
     await pool.query(portfolioModelSQL);
     console.log('✓ Portfolio table created successfully');
+
+    await pool.query(demotradingModelSQL);
+    console.log('✓ Demotrading table created successfully');
 
     console.log('✓ All migrations completed successfully');
     await pool.end();
