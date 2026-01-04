@@ -52,8 +52,7 @@ export async function safeFetch<T>(
   options?: RequestInit
 ): Promise<T> {
   const headers = getAuthHeaders();
-  // Prepend backend URL for /api/ calls (development only)
-  let fullUrl = url;
+   let fullUrl = url;
   if (url.startsWith('/api/')) {
      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
     fullUrl = `${backendUrl}${url}`;
