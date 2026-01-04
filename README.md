@@ -1,4 +1,93 @@
-# NEPSE Suchana
+A full-stack NEPSE (Nepal Stock Exchange) portfolio tracker and demo trading platform.
+
+## Features
+
+- User authentication (JWT-based)
+- Portfolio management (create, update, view portfolios)
+- Live NEPSE stock data integration
+- Demo trading accounts with virtual balance
+- Buy/sell stocks in demo trading mode
+- Transaction history for demo trades
+- Modern UI with Next.js and Tailwind CSS
+
+## Project Structure
+
+```
+Nepse-Suchana/
+├── app/                  # Next.js frontend
+│   ├── (auth)/           # Login & signup pages
+│   ├── api/              # Next.js API routes (proxy to backend)
+│   ├── components/       # React UI components
+│   ├── dashboard/        # User dashboard
+│   ├── demo-trading/     # Demo trading UI
+│   ├── portfolio/        # Portfolio UI
+│   ├── watchlist/        # Watchlist UI
+│   └── ...
+├── backend/              # Node.js + Express backend
+│   ├── src/
+│   │   ├── config/       # DB setup & migration scripts
+│   │   ├── controller/   # Route controllers
+│   │   ├── models/       # SQL schema files
+│   │   └── Routes/       # Express route files
+│   ├── package.json
+│   └── server.js
+├── public/               # Static assets
+├── utils/                # Utility scripts
+└── ...
+```
+
+## Backend API Endpoints
+
+### Demo Trading
+- `POST   /api/demotrading` — Create demo trading account
+- `GET    /api/demotrading` — Get demo trading account details
+- `PUT    /api/demotrading` — Update demo trading account (balance)
+- `POST   /api/demotrading/transactions` — Add a buy/sell transaction
+
+### Portfolio
+- `POST   /api/portfolios` — Create portfolio
+- `GET    /api/portfolios` — List portfolios
+- `POST   /api/portfolio-holdings` — Add stock to portfolio
+- ...
+
+## Database Schema
+
+- `demotrading` — Demo trading accounts (per user)
+- `demotrading_transactions` — Buy/sell transactions for demo trading
+- `users`, `portfolios`, `portfolio_holdings`, ...
+
+## Setup & Run
+
+### Backend
+```bash
+cd backend
+npm install
+node ./src/config/migrate.js   # Run DB migrations
+node server.js                 # Start backend server
+```
+
+### Frontend
+```bash
+npm install
+npm run dev
+```
+
+## Demo Trading Transaction Example (POST /api/demotrading/transactions)
+```json
+{
+  "demotrading_id": 1,
+  "stock_symbol": "NABIL",
+  "side": "BUY",
+  "quantity": 100,
+  "price": 500.25
+}
+```
+
+## Contributing
+Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+
+## License
+[MIT](LICENSE)
 
 A comprehensive web application for tracking stocks, managing portfolios, and maintaining a watchlist for the Nepal Stock Exchange (NEPSE). Built with Next.js (React), Node.js, Express, and PostgreSQL.
 
