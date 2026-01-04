@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-
 import { safeFetch } from "../lib/api-utils";
 import {
   FaSearch, FaBuilding, FaHashtag, FaMoneyBillWave, FaPlusCircle,
@@ -50,20 +49,23 @@ export default function MultiPortfolioTracker() {
     // Fetch all stocks for suggestions from backend API
     const fetchAllStocks = async () => {
       try {
-        // Use the backend proxy route for live NEPSE data
         const data = await safeFetch<any>('/api/stocks');
-        if (Array.isArray(data)) {
+        console.log('Fetched stocks from /api/stocks:', data);
+         if (Array.isArray(data)) {
           setAllStocks(data);
         } else if (data && Array.isArray(data.stocks)) {
           setAllStocks(data.stocks);
+        } else if (data && Array.isArray(data.data)) {
+          setAllStocks(data.data);
         } else {
           setAllStocks([]);
         }
       } catch (err) {
         console.error('Failed to fetch stocks:', err);
-        setAllStocks([]); // fallback to empty if error
+        setAllStocks([]);
       }
     };
+    
   // Multi-portfolio state
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
@@ -112,7 +114,6 @@ export default function MultiPortfolioTracker() {
   const [allStocks, setAllStocks] = useState<Stock[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showPortfolioMenu, setShowPortfolioMenu] = useState<number | null>(null);
-  const [debugInfo, setDebugInfo] = useState<string>("");
   
   const inputRef = useRef<HTMLInputElement>(null);
   const portfolioMenuRef = useRef<HTMLDivElement>(null);
@@ -139,19 +140,8 @@ export default function MultiPortfolioTracker() {
     try {
       setIsLoading(prev => ({ ...prev, portfolios: true }));
       setError("");
-      setDebugInfo("Fetching portfolios...");
       
-      // Try multiple endpoints if needed
-      let data: Portfolio[] = [];
-      
-      try {
-         data = await safeFetch<Portfolio[]>('/api/portfolios');
-      } catch (err) {
-        setDebugInfo(`API error: ${err instanceof Error ? err.message : 'Unknown error'}`);
-        
-         
-      }
-      
+      const data = await safeFetch<Portfolio[]>('/api/portfolios');
       setPortfolios(data);
       
       if (data.length > 0 && !selectedPortfolio) {
@@ -164,20 +154,6 @@ export default function MultiPortfolioTracker() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch portfolios';
       setError(errorMessage);
-      console.error('Fetch portfolios error:', errorMessage);
-      
-      // For debugging, show what went wrong
-      if (process.env.NODE_ENV === 'development') {
-        try {
-          const testRes = await fetch('/api/portfolios');
-          console.log('Test fetch status:', testRes.status);
-          console.log('Test fetch headers:', Object.fromEntries(testRes.headers.entries()));
-          const text = await testRes.text();
-          console.log('Test fetch response (first 200 chars):', text.substring(0, 200));
-        } catch (debugErr) {
-          console.error('Debug fetch error:', debugErr);
-        }
-      }
     } finally {
       setIsLoading(prev => ({ ...prev, portfolios: false }));
     }
@@ -197,13 +173,10 @@ export default function MultiPortfolioTracker() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch portfolio data';
       setError(errorMessage);
-      console.error('Fetch portfolio data error:', errorMessage);
     } finally {
       setIsLoading(prev => ({ ...prev, portfolio: false }));
     }
   };
-
-  
 
   // Create new portfolio
   const handleCreatePortfolio = async (e: React.FormEvent) => {
@@ -388,7 +361,7 @@ export default function MultiPortfolioTracker() {
       const filtered = allStocks.filter(stock =>
         stock.symbol.toLowerCase().includes(lowerQuery) ||
         stock.name.toLowerCase().includes(lowerQuery)
-      ).slice(0, 10); // show up to 10 suggestions
+      ).slice(0, 10);
       setStockSuggestions(filtered);
     }, 200),
     [allStocks]
@@ -434,7 +407,6 @@ export default function MultiPortfolioTracker() {
       initial_balance: ""
     });
   };
-
 
   // Calculate portfolio metrics
   const calculateMetrics = () => {
@@ -487,14 +459,14 @@ export default function MultiPortfolioTracker() {
   // Portfolio selector component
   const PortfolioSelector = () => (
     <div className="mb-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Your Portfolios</h2>
           <p className="text-gray-600 dark:text-gray-400">Manage and track multiple investment portfolios</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center"
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center shadow-md hover:shadow-xl"
         >
           <FaPlusCircle className="mr-2" />
           New Portfolio
@@ -506,7 +478,7 @@ export default function MultiPortfolioTracker() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : portfolios.length === 0 ? (
-        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
+        <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
           <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
             <FaChartLine className="w-10 h-10 text-blue-400 dark:text-blue-500" />
           </div>
@@ -518,7 +490,7 @@ export default function MultiPortfolioTracker() {
           </p>
           <button
             onClick={() => setShowAddModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all"
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all shadow-md"
           >
             Create First Portfolio
           </button>
@@ -530,97 +502,101 @@ export default function MultiPortfolioTracker() {
               key={portfolio.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              whileHover={{ y: -5 }}
-              className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border-2 transition-all duration-300 cursor-pointer ${
+              whileHover={{ y: -5, transition: { duration: 0.2 } }}
+              className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border-2 transition-all duration-300 cursor-pointer group ${
                 selectedPortfolio?.id === portfolio.id
                   ? 'border-blue-500 shadow-xl'
-                  : 'border-transparent hover:border-gray-200 dark:hover:border-gray-700'
+                  : 'border-transparent hover:border-blue-200 dark:hover:border-gray-700'
               }`}
               onClick={() => {
                 setSelectedPortfolio(portfolio);
                 fetchPortfolioData(portfolio.id);
               }}
             >
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
-                        {portfolio.name}
-                      </h3>
-                      <div className="relative" ref={portfolioMenuRef}>
+              <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="relative" ref={portfolioMenuRef}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPortfolioMenu(showPortfolioMenu === portfolio.id ? null : portfolio.id);
+                    }}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  >
+                    <FaEllipsisV className="text-gray-500" />
+                  </button>
+                  
+                  <AnimatePresence>
+                    {showPortfolioMenu === portfolio.id && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 z-10"
+                      >
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setShowPortfolioMenu(showPortfolioMenu === portfolio.id ? null : portfolio.id);
+                            setEditPortfolioForm({
+                              name: portfolio.name,
+                              description: portfolio.description || ""
+                            });
+                            setShowEditModal(true);
+                            setShowPortfolioMenu(null);
                           }}
-                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                          className="w-full px-4 py-3 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center rounded-t-xl"
                         >
-                          <FaEllipsisV className="text-gray-500" />
+                          <FaEdit className="mr-3 text-blue-500" />
+                          Edit Portfolio
                         </button>
-                        
-                        <AnimatePresence>
-                          {showPortfolioMenu === portfolio.id && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.95 }}
-                              className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-100 dark:border-gray-700 z-10"
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditPortfolioForm({
-                                    name: portfolio.name,
-                                    description: portfolio.description || ""
-                                  });
-                                  setShowEditModal(true);
-                                  setShowPortfolioMenu(null);
-                                }}
-                                className="w-full px-4 py-3 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
-                              >
-                                <FaEdit className="mr-3 text-blue-500" />
-                                Edit Portfolio
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedPortfolio(portfolio);
-                                  setShowDeleteConfirm(true);
-                                  setShowPortfolioMenu(null);
-                                }}
-                                className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
-                              >
-                                <FaTrash className="mr-3" />
-                                Delete Portfolio
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  copyPortfolioId(portfolio.id);
-                                  setShowPortfolioMenu(null);
-                                }}
-                                className="w-full px-4 py-3 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center"
-                              >
-                                {copiedId === portfolio.id.toString() ? (
-                                  <>
-                                    <FaCheck className="mr-3 text-green-500" />
-                                    Copied!
-                                  </>
-                                ) : (
-                                  <>
-                                    <FaCopy className="mr-3 text-gray-500" />
-                                    Copy ID
-                                  </>
-                                )}
-                              </button>
-                            </motion.div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPortfolio(portfolio);
+                            setShowDeleteConfirm(true);
+                            setShowPortfolioMenu(null);
+                          }}
+                          className="w-full px-4 py-3 text-left text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center"
+                        >
+                          <FaTrash className="mr-3" />
+                          Delete Portfolio
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyPortfolioId(portfolio.id);
+                            setShowPortfolioMenu(null);
+                          }}
+                          className="w-full px-4 py-3 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center rounded-b-xl"
+                        >
+                          {copiedId === portfolio.id.toString() ? (
+                            <>
+                              <FaCheck className="mr-3 text-green-500" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <FaCopy className="mr-3 text-gray-500" />
+                              Copy ID
+                            </>
                           )}
-                        </AnimatePresence>
-                      </div>
-                    </div>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center mr-4">
+                    <FaChartLine className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                      {portfolio.name}
+                    </h3>
                     {portfolio.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">
                         {portfolio.description}
                       </p>
                     )}
@@ -630,11 +606,11 @@ export default function MultiPortfolioTracker() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 dark:text-gray-400 text-sm">Initial Balance:</span>
-                    <span className="font-bold">Rs. {portfolio.initial_balance.toLocaleString()}</span>
+                    <span className="font-bold text-gray-900 dark:text-white">Rs. {portfolio.initial_balance.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 dark:text-gray-400 text-sm">Holdings:</span>
-                    <span className="font-bold">{portfolio.holdings_count || 0} stocks</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{portfolio.holdings_count || 0} stocks</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 dark:text-gray-400 text-sm">Total Value:</span>
@@ -648,7 +624,7 @@ export default function MultiPortfolioTracker() {
                   <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400">
                     <span>Created {new Date(portfolio.created_at).toLocaleDateString()}</span>
                     {selectedPortfolio?.id === portfolio.id && (
-                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">
+                      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs">
                         Selected
                       </span>
                     )}
@@ -668,48 +644,38 @@ export default function MultiPortfolioTracker() {
     
     return (
       <div className="mb-8">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                {selectedPortfolio.name}
-              </h1>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowEditModal(true)}
-                  className="p-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
-                  title="Edit Portfolio"
-                >
-                  <FaEdit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                  title="Delete Portfolio"
-                >
-                  <FaTrash className="w-4 h-4" />
-                </button>
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+                <FaChartLine className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {selectedPortfolio.name}
+                </h1>
+                {selectedPortfolio.description && (
+                  <p className="text-gray-600 dark:text-gray-400 mt-1">
+                    {selectedPortfolio.description}
+                  </p>
+                )}
               </div>
             </div>
-            {selectedPortfolio.description && (
-              <p className="text-gray-600 dark:text-gray-400 mb-2">
-                {selectedPortfolio.description}
-              </p>
-            )}
-            <div className="flex flex-wrap gap-3 text-sm text-gray-500 dark:text-gray-400">
-              <span className="flex items-center">
-                <FaLock className="mr-1" />
+            <div className="flex flex-wrap gap-3 text-sm text-gray-500 dark:text-gray-400 mt-2">
+              <span className="flex items-center bg-gray-100 dark:bg-gray-900 px-3 py-1 rounded-full">
+                <FaLock className="mr-1 text-xs" />
                 Portfolio ID: {selectedPortfolio.id}
               </span>
-              <span>•</span>
-              <span>Created: {new Date(selectedPortfolio.created_at).toLocaleDateString()}</span>
+              <span className="bg-gray-100 dark:bg-gray-900 px-3 py-1 rounded-full">
+                Created: {new Date(selectedPortfolio.created_at).toLocaleDateString()}
+              </span>
             </div>
           </div>
           
           <div className="flex gap-3">
             <button
               onClick={() => setShowStockModal(true)}
-              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center"
+              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center shadow-md hover:shadow-xl"
             >
               <FaPlusCircle className="mr-2" />
               Add Stock
@@ -717,7 +683,7 @@ export default function MultiPortfolioTracker() {
             <button
               onClick={() => fetchPortfolioData(selectedPortfolio.id)}
               disabled={isLoading.portfolio}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center disabled:opacity-50"
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center shadow-md hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FaSync className={`mr-2 ${isLoading.portfolio ? 'animate-spin' : ''}`} />
               Refresh
@@ -727,7 +693,7 @@ export default function MultiPortfolioTracker() {
         
         {/* Metrics Cards */}
         {metrics && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -739,7 +705,7 @@ export default function MultiPortfolioTracker() {
                 </div>
                 <button
                   onClick={() => setShowTotalValue(!showTotalValue)}
-                  className="p-2 hover:bg-white/20 rounded-lg"
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
                 >
                   {showTotalValue ? <FaEye className="w-4 h-4" /> : <FaEyeSlash className="w-4 h-4" />}
                 </button>
@@ -833,7 +799,7 @@ export default function MultiPortfolioTracker() {
                     placeholder="Filter stocks..."
                     value={filterSymbol}
                     onChange={(e) => setFilterSymbol(e.target.value)}
-                    className="pl-10 pr-4 py-2 text-sm bg-gray-50 dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className="pl-10 pr-4 py-2 text-sm bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all w-64"
                   />
                 </div>
               </div>
@@ -844,25 +810,25 @@ export default function MultiPortfolioTracker() {
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50 dark:bg-gray-900/50">
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Symbol
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Company
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Quantity
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Buy Price
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Date Added
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -879,14 +845,33 @@ export default function MultiPortfolioTracker() {
                 ) : filteredStocks.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-6 py-12 text-center">
-                      <div className="text-gray-500 dark:text-gray-400">
-                        No stocks found in this portfolio. Add your first stock!
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center">
+                          <FaChartLine className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <h4 className="text-gray-500 dark:text-gray-400 font-medium mb-2">No stocks found</h4>
+                        <p className="text-gray-400 dark:text-gray-500 text-sm mb-4">
+                          {filterSymbol ? 'Try changing your search term' : 'Add your first stock to get started'}
+                        </p>
+                        {!filterSymbol && (
+                          <button
+                            onClick={() => setShowStockModal(true)}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            Add First Stock
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ) : (
                   filteredStocks.map((stock) => (
-                    <tr key={stock.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                    <motion.tr 
+                      key={stock.id} 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+                    >
                       <td className="px-6 py-4">
                         <span className="font-bold text-gray-900 dark:text-white">
                           {stock.symbol}
@@ -898,10 +883,10 @@ export default function MultiPortfolioTracker() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-medium">{stock.quantity}</span>
+                        <span className="font-medium text-gray-900 dark:text-white">{stock.quantity}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="font-medium">Rs. {stock.buyPrice.toFixed(2)}</span>
+                        <span className="font-medium text-gray-900 dark:text-white">Rs. {stock.buyPrice.toFixed(2)}</span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -920,13 +905,13 @@ export default function MultiPortfolioTracker() {
                       <td className="px-6 py-4">
                         <button
                           onClick={() => handleDeleteStock(stock.id)}
-                          className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                          className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                           title="Delete Stock"
                         >
                           <FaTrash className="w-4 h-4" />
                         </button>
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))
                 )}
               </tbody>
@@ -939,24 +924,6 @@ export default function MultiPortfolioTracker() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Debug info for development */}
-      {process.env.NODE_ENV === 'development' && debugInfo && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                Debug: {debugInfo}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -975,7 +942,7 @@ export default function MultiPortfolioTracker() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
+              <div className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
                 <FaCalendarAlt className="inline mr-2" />
                 {new Date().toLocaleDateString('en-NP')}
               </div>
@@ -1009,7 +976,7 @@ export default function MultiPortfolioTracker() {
                     </div>
                     <button
                       onClick={clearMessages}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-red-500 hover:text-red-700 dark:hover:text-red-300"
                     >
                       <FaTimes />
                     </button>
@@ -1025,7 +992,7 @@ export default function MultiPortfolioTracker() {
                     </div>
                     <button
                       onClick={clearMessages}
-                      className="text-emerald-500 hover:text-emerald-700"
+                      className="text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300"
                     >
                       <FaTimes />
                     </button>
@@ -1072,7 +1039,7 @@ export default function MultiPortfolioTracker() {
                   </div>
                   <button
                     onClick={() => setShowAddModal(false)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
                     <FaTimes className="w-4 h-4" />
                   </button>
@@ -1147,7 +1114,7 @@ export default function MultiPortfolioTracker() {
                     className={`flex-1 px-6 py-3 font-medium rounded-xl transition-all flex items-center justify-center ${
                       isCreating || portfolios.length >= 5
                         ? 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg'
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg shadow-md'
                     }`}
                   >
                     {isCreating ? (
@@ -1208,7 +1175,7 @@ export default function MultiPortfolioTracker() {
                   </div>
                   <button
                     onClick={() => setShowEditModal(false)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
                     <FaTimes className="w-4 h-4" />
                   </button>
@@ -1252,7 +1219,7 @@ export default function MultiPortfolioTracker() {
                     className={`flex-1 px-6 py-3 font-medium rounded-xl transition-all flex items-center justify-center ${
                       isCreating
                         ? 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg'
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-lg shadow-md'
                     }`}
                   >
                     {isCreating ? (
@@ -1330,7 +1297,7 @@ export default function MultiPortfolioTracker() {
                     className={`flex-1 px-6 py-3 font-medium rounded-xl transition-all flex items-center justify-center ${
                       isDeleting
                         ? 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-red-500 to-orange-600 text-white hover:shadow-lg'
+                        : 'bg-gradient-to-r from-red-500 to-orange-600 text-white hover:shadow-lg shadow-md'
                     }`}
                   >
                     {isDeleting ? (
@@ -1394,7 +1361,7 @@ export default function MultiPortfolioTracker() {
                       setShowStockModal(false);
                       resetStockForm();
                     }}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
                     <FaTimes className="w-4 h-4" />
                   </button>
@@ -1435,7 +1402,7 @@ export default function MultiPortfolioTracker() {
                                 stockSuggestions.map((stock) => (
                                   <div
                                     key={stock.symbol}
-                                    className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-800 cursor-pointer border-b last:border-b-0 border-gray-100 dark:border-gray-800"
+                                    className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-gray-800 cursor-pointer border-b last:border-b-0 border-gray-100 dark:border-gray-800 transition-colors"
                                     onClick={() => {
                                       selectSuggestion(stock);
                                       setShowSuggestions(false);
@@ -1447,7 +1414,7 @@ export default function MultiPortfolioTracker() {
                                         <p className="text-sm text-gray-600 dark:text-gray-400 truncate" dangerouslySetInnerHTML={{ __html: highlightMatch(stock.name, form.symbol) }} />
                                       </div>
                                       {stock.currentPrice && (
-                                        <span className="font-bold">
+                                        <span className="font-bold text-gray-900 dark:text-white">
                                           Rs. {stock.currentPrice.toFixed(2)}
                                         </span>
                                       )}
@@ -1553,7 +1520,7 @@ export default function MultiPortfolioTracker() {
                 <div className="flex gap-3 mt-8">
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:shadow-lg transition-all flex items-center justify-center"
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:shadow-lg transition-all flex items-center justify-center shadow-md"
                   >
                     <FaPlusCircle className="mr-2" />
                     Add Stock
