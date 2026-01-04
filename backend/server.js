@@ -8,8 +8,7 @@ const watchlistRoutes = require('./src/Routes/watchlistRoute');
 const portfolioRoutes = require('./src/Routes/PortfolioRoutes');
 const portfolioHoldingsRoute = require('./src/Routes/PortfolioHoldingsRoute');
 const stockRoutes = require('./src/Routes/StockRoutes');
-const stockRoutes = require('./src/Routes/StockRoutes');
-const app = express();
+ const app = express();
 const port = process.env.PORT || 3001;
 
  app.use(cors());
