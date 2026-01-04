@@ -8,10 +8,11 @@ const watchlistRoutes = require('./src/Routes/watchlistRoute');
 const portfolioRoutes = require('./src/Routes/PortfolioRoutes');
 const portfolioHoldingsRoute = require('./src/Routes/PortfolioHoldingsRoute');
 const stockRoutes = require('./src/Routes/StockRoutes');
- const app = express();
+const demotradingRoute = require('./src/Routes/DemotradingRoute');
+const app = express();
 const port = process.env.PORT || 3001;
 
- app.use(cors());
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }))
 // Routes
@@ -21,8 +22,9 @@ app.use('/api', portfolioRoutes);
 app.use('/api', portfolioHoldingsRoute);
 app.use('/api', stockRoutes);
 app.use('/api/watchlist', watchlistRoutes);
-app.use('/api',stockRoutes)
- // Health check route
+app.use('/api', stockRoutes)
+app.use('/api/demotrading', demotradingRoute)
+// Health check route
 app.get('/api/health', async (req, res) => {
   try {
     const result = await db.query('SELECT NOW()');
