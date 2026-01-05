@@ -1,6 +1,6 @@
 --created demo trading account table
 
-CREATE TABLE demotrading (
+CREATE TABLE IF NOT EXISTS demotrading (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
     current_balance NUMERIC(16,2) NOT NULL DEFAULT 10000000.00,
@@ -9,7 +9,7 @@ CREATE TABLE demotrading (
 
 --create demo trading transactions table
 
-create table demotrading_transactions (
+create table if not exists demotrading_transactions (
     id SERIAL PRIMARY KEY,
     demotrading_id INTEGER REFERENCES demotrading(id) ON DELETE CASCADE,
     stock_symbol VARCHAR(20) NOT NULL,
