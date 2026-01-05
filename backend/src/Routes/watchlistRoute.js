@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const watchlistController = require('../controller/watchlistcontroller');
+const protectedRoute = require('../middleware/authMiddleware');
+
+//see watchlist of a user
+router.get('/watchlist/:userId', protectedRoute, watchlistController.getWatchlist);
 
 // Add item to watchlist
-router.post('/add', watchlistController.addToWatchlist);
+router.post('/add', protectedRoute, watchlistController.addToWatchlist);
 
 // Remove item from watchlist
 router.post('/remove', watchlistController.removeFromWatchlist);
-
-// Get user's watchlist
-router.get('/:userId', watchlistController.getWatchlist);
-
+ 
 module.exports = router ;
