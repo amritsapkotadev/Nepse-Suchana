@@ -4,7 +4,7 @@ require('dotenv').config();
 const db = require('./src/config/databasesetup');
 // Removed: const portfolioRoutes = require('./Routes/PortfolioRoute');
 const authRoutes = require('./src/Routes/AuthRoute');
-const watchlistRoutes = require('./src/Routes/watchlistRoute');
+const watchlistRoute = require('./src/Routes/watchlistRoute');
 const portfolioRoutes = require('./src/Routes/PortfolioRoutes');
 const portfolioHoldingsRoute = require('./src/Routes/PortfolioHoldingsRoute');
 const stockRoutes = require('./src/Routes/StockRoutes');
@@ -21,8 +21,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api', portfolioRoutes);
 app.use('/api', portfolioHoldingsRoute);
 app.use('/api', stockRoutes);
-app.use('/api/watchlist', watchlistRoutes);
-app.use('/api', stockRoutes)
+app.use('/api', watchlistRoute);
+app.use('/api/watchlist', watchlistRoute);
 app.use('/api/demotrading', demotradingRoute)
 // Health check route
 app.get('/api/health', async (req, res) => {
