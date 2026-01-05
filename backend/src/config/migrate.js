@@ -26,12 +26,21 @@ async function runMigrations() {
       path.join(__dirname, '../models/portfolio.sql'),
       'utf8'
     );
+
+    const watchlistModelSQL = fs.readFileSync(
+      path.join(__dirname, '../models/watchlist.sql'),
+      'utf8'
+    );
+    await pool.query(watchlistModelSQL);
+    console.log('✓ Watchlist table created successfully');
     // Read and execute the demotrading model SQL
 
     const demotradingModelSQL = fs.readFileSync(
       path.join(__dirname, '../models/demotrading.sql'),
       'utf8'
     );
+
+
     await pool.query(portfolioModelSQL);
     console.log('✓ Portfolio table created successfully');
 
@@ -39,6 +48,9 @@ async function runMigrations() {
     console.log('✓ Demotrading table created successfully');
 
     console.log('✓ All migrations completed successfully');
+
+    await pool.query(watchlistModelSQL);
+    console.log('✓ Watchlist table created successfully');
     await pool.end();
     process.exit(0);
   } catch (error) {
