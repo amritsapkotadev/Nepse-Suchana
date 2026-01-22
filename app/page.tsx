@@ -344,10 +344,7 @@ export default function Home() {
                   <span className="font-medium bg-slate-800/50 px-3 py-1 rounded-lg">
                     {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
-                </div>
-                <div className="text-sm bg-slate-800/50 px-3 py-1 rounded-lg">
-                  Sync #{refreshCount}
-                </div>
+                
               </div>
             </div>
           </div>
