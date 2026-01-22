@@ -9,6 +9,11 @@ router.post('/dividends', async (req, res) => {
     return res.status(400).json({ error: 'All fields are required' });
   }
   try {
+    // Check if portfolio exists
+    const portfolioCheck = await db.query('SELECT id FROM portfolios WHERE id = $1', [portfolio_id]);
+    if (portfolioCheck.rows.length === 0) {
+      return res.status(400).json({ error: 'Portfolio does not exist. Please provide a valid portfolio_id.' });
+    }
     const result = await db.query(
       `INSERT INTO dividends (portfolio_id, stock_symbol, type, value, date, notes)
        VALUES ($1, $2, $3, $4, $5, $6)
