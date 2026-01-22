@@ -1,3 +1,26 @@
+const deleteDemoTradingTransaction = async (req, res) => {
+  const user_id = req.user.id;
+  const { id } = req.params;
+  try {
+    // Ensure the transaction belongs to the user's demo trading account
+    const tx = await db.query(
+      `SELECT t.* FROM demotrading_transactions t
+       JOIN demotrading d ON t.demotrading_id = d.id
+       WHERE t.id = $1 AND d.user_id = $2`,
+      [id, user_id]
+    );
+    if (tx.rows.length === 0) {
+      return res.status(404).json({ error: 'Transaction not found or not authorized.' });
+    }
+    const result = await db.query(
+      'DELETE FROM demotrading_transactions WHERE id = $1 RETURNING *',
+      [id]
+    );
+    res.json({ message: 'Transaction deleted', transaction: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 const db = require('../config/databasesetup');
 
 const createDemoTradingAccount = async (req, res) => {
@@ -96,5 +119,6 @@ module.exports = {
   createDemoTradingAccount,
   getDemoTradingAccount,
   updateDemoTradingAccount,
-  createDemoTradingTransaction
+  createDemoTradingTransaction,
+  deleteDemoTradingTransaction
 };
