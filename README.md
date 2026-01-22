@@ -1,6 +1,9 @@
+
+# Nepse-Suchana
+
 A full-stack NEPSE (Nepal Stock Exchange) portfolio tracker and demo trading platform.
 
-## Features
+## Features 
 
 - User authentication (JWT-based)
 - Portfolio management (create, update, view portfolios)
@@ -8,6 +11,7 @@ A full-stack NEPSE (Nepal Stock Exchange) portfolio tracker and demo trading pla
 - Demo trading accounts with virtual balance
 - Buy/sell stocks in demo trading mode
 - Transaction history for demo trades
+- Watchlist with unique stock symbols per user
 - Modern UI with Next.js and Tailwind CSS
 
 ## Project Structure
@@ -50,10 +54,17 @@ Nepse-Suchana/
 - `POST   /api/portfolio-holdings` — Add stock to portfolio
 - ...
 
+### Watchlist
+- `POST   /api/watchlist/add` — Add stock to watchlist (unique per user)
+- `POST   /api/watchlist/remove` — Remove stock from watchlist
+- `GET    /api/watchlist/:userId` — Get a user's watchlist
+- `GET    /api/watchlist/my` — Get authenticated user's watchlist
+
 ## Database Schema
 
 - `demotrading` — Demo trading accounts (per user)
 - `demotrading_transactions` — Buy/sell transactions for demo trading
+- `watchlist` — User watchlists (unique stock per user)
 - `users`, `portfolios`, `portfolio_holdings`, ...
 
 ## Setup & Run
