@@ -9,6 +9,7 @@ const portfolioRoutes = require('./src/Routes/PortfolioRoutes');
 const portfolioHoldingsRoute = require('./src/Routes/PortfolioHoldingsRoute');
 const stockRoutes = require('./src/Routes/StockRoutes');
 const demotradingRoute = require('./src/Routes/DemotradingRoute');
+const dividendsRoute = require('./src/Routes/DividendsRoute');
 const app = express();
 const port = process.env.PORT || 3001;
 
@@ -24,6 +25,7 @@ app.use('/api', stockRoutes);
 app.use('/api', watchlistRoute);
 app.use('/api/watchlist', watchlistRoute);
 app.use('/api/demotrading', demotradingRoute)
+app.use('/api', dividendsRoute);
 // Health check route
 app.get('/api/health', async (req, res) => {
   try {
