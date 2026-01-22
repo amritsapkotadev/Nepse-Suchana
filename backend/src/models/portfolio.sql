@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS portfolio_holdings (
 
 CREATE INDEX IF NOT EXISTS idx_holdings_portfolio_id ON portfolio_holdings(portfolio_id);
 
--- TRADES TABLE (optional but recommended)
+-- TRADES TABLE  
 CREATE TABLE IF NOT EXISTS trades (
     id SERIAL PRIMARY KEY,
     portfolio_id INTEGER NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
@@ -52,9 +52,8 @@ CREATE TABLE IF NOT EXISTS trades (
 
 CREATE INDEX IF NOT EXISTS idx_trades_portfolio_id ON trades(portfolio_id);
 
--- =========================
--- DIVIDENDS
--- =========================
+ -- DIVIDENDS
+
 CREATE TABLE IF NOT EXISTS dividends (
     id SERIAL PRIMARY KEY,
     portfolio_id INTEGER NOT NULL,
