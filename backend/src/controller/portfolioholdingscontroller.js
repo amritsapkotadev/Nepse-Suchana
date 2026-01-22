@@ -30,9 +30,26 @@ const getPortfolioHoldings = async (req, res) => {
 // Add holding to a portfolio
 const addPortfolioHolding = async (req, res) => {
   const user_id = req.user.id;
-  const { portfolio_id, symbol, company_name, quantity, buy_price, transaction_type } = req.body;
-  if (!portfolio_id || !symbol || !company_name || !quantity || !buy_price || !transaction_type) {
-    return res.status(400).json({ error: 'All fields are required' });
+    const {
+    portfolio_id,
+    stock_symbol,
+    quantity,
+    average_price,
+    cash_dividend = 0,
+    right_share = 0,
+    bonus_share = 0,
+    other_note = null
+  } = req.body;
+
+  if (
+    portfolio_id === undefined ||
+    stock_symbol === undefined ||
+    quantity === undefined ||
+    average_price === undefined
+  ) {
+    return res.status(400).json({
+      error: 'portfolio_id, stock_symbol, quantity, and average_price are required'
+    });
   }
   try {
     // Check ownership
@@ -43,14 +60,29 @@ const addPortfolioHolding = async (req, res) => {
     if (portfolioRows.length === 0) {
       return res.status(404).json({ error: 'Portfolio not found' });
     }
-    // Insert holding
+    // Insert holding (match SQL schema)
     const result = await db.query(
-      `INSERT INTO portfolio_holdings (portfolio_id, symbol, company_name, quantity, buy_price, transaction_type, date_added)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW()) RETURNING *`,
-      [portfolio_id, symbol, company_name, quantity, buy_price, transaction_type]
+      `INSERT INTO portfolio_holdings (
+        portfolio_id, stock_symbol, quantity, average_price, cash_dividend, right_share, bonus_share, other_note
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [
+        portfolio_id,
+        stock_symbol,
+        quantity,
+        average_price,
+        cash_dividend,
+        right_share,
+        bonus_share,
+        other_note
+      ]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({
+        error: 'Stock already exists in this portfolio'
+      });
+    }
     res.status(500).json({ error: err.message });
   }
 };
