@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { safeFetch } from "../lib/api-utils";
 import {
   FaSearch, FaBuilding, FaHashtag, FaMoneyBillWave, FaPlusCircle,
@@ -167,8 +167,14 @@ export default function MultiPortfolioTracker() {
       
       const data = await safeFetch<any[]>(`/api/portfolio-holdings?portfolio_id=${portfolioId}`);
       setPortfolioStocks(data.map((stock: any) => ({
-        ...stock,
-        dateAdded: new Date(stock.dateAdded)
+        id: stock.id,
+        symbol: stock.stock_symbol,
+        companyName: stock.company_name || "",
+        quantity: stock.quantity,
+        buyPrice: Number(stock.average_price),
+        transactionType: "Buy", // or infer if you add this to backend
+        dateAdded: new Date(stock.created_at),
+        portfolio_id: stock.portfolio_id
       })));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch portfolio data';
@@ -279,46 +285,39 @@ export default function MultiPortfolioTracker() {
       setError("Please select a portfolio first");
       return;
     }
-    
     setError("");
     setSuccess("");
-    
     const quantity = parseFloat(form.quantity);
     const buyPrice = parseFloat(form.buyPrice);
-    
     if (!form.symbol || !form.companyName || isNaN(quantity) || isNaN(buyPrice)) {
       setError("All fields are required with valid numbers");
       return;
     }
-    
     try {
       const newStock = await safeFetch<any>('/api/portfolio-holdings', {
         method: 'POST',
         body: JSON.stringify({
           portfolio_id: selectedPortfolio.id,
-          symbol: form.symbol.toUpperCase(),
-          company_name: form.companyName,
+          stock_symbol: form.symbol.toUpperCase(),
           quantity,
-          buy_price: buyPrice,
-          transaction_type: form.transactionType
+          average_price: buyPrice
         })
       });
-      
       setPortfolioStocks(prev => [...prev, {
         ...newStock,
-        dateAdded: new Date(newStock.dateAdded)
+        buyPrice: Number(newStock.average_price),
+        dateAdded: new Date(newStock.created_at)
       }]);
-      
       // Update portfolio holdings count
       setPortfolios(prev => prev.map(p => 
         p.id === selectedPortfolio.id 
           ? { ...p, holdings_count: (p.holdings_count || 0) + 1 }
           : p
       ));
-      
       setSuccess(`${form.transactionType} transaction added successfully!`);
       setShowStockModal(false);
       resetStockForm();
+      setShowSuggestions(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add stock';
       setError(errorMessage);
@@ -398,6 +397,7 @@ export default function MultiPortfolioTracker() {
       transactionType: "Buy"
     });
     setStockSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const resetPortfolioForm = () => {
@@ -435,12 +435,12 @@ export default function MultiPortfolioTracker() {
     };
   };
 
-  const metrics = calculateMetrics();
+  const metrics = useMemo(() => calculateMetrics(), [portfolioStocks, selectedPortfolio]);
 
   // Filter portfolio stocks
   const filteredStocks = portfolioStocks.filter(stock =>
-    stock.symbol.toLowerCase().includes(filterSymbol.toLowerCase()) ||
-    stock.companyName.toLowerCase().includes(filterSymbol.toLowerCase())
+    (stock.symbol && stock.symbol.toLowerCase().includes(filterSymbol.toLowerCase())) ||
+    (stock.companyName && stock.companyName.toLowerCase().includes(filterSymbol.toLowerCase()))
   );
 
   // Copy portfolio ID
