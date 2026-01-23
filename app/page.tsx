@@ -283,9 +283,21 @@ export default function Home() {
               </div>
               
               <div className="flex items-center gap-6">
-                <a href="/portfolio" className="text-base font-semibold text-gray-700 hover:text-blue-600 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50">
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      const token = localStorage.getItem('token');
+                      if (token) {
+                        window.location.href = '/portfolio';
+                      } else {
+                        window.location.href = '/login';
+                      }
+                    }
+                  }}
+                  className="text-base font-semibold text-gray-700 hover:text-blue-600 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
+                >
                   Portfolio
-                </a>
+                </button>
                 <a href="/demo-trading" className="text-base font-semibold text-gray-700 hover:text-indigo-600 transition-colors px-3 py-2 rounded-lg hover:bg-indigo-50">
                   Demo Trading
                 </a>
@@ -312,10 +324,10 @@ export default function Home() {
                 </button>
                 
                 <div className="hidden md:flex items-center gap-4">
-                  <a href="/auth/login" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all">
+                  <a href="/login" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all">
                     Login
                   </a>
-                  <a href="/auth/signup" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md hover:from-emerald-600 hover:to-green-700 transition-all">
+                  <a href="/signup" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md hover:from-emerald-600 hover:to-green-700 transition-all">
                     Signup
                   </a>
                 </div>
@@ -344,7 +356,8 @@ export default function Home() {
                   <span className="font-medium bg-slate-800/50 px-3 py-1 rounded-lg">
                     {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>
-                
+                </div>
+               
               </div>
             </div>
           </div>
