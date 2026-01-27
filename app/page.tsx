@@ -156,8 +156,28 @@ function formatCrore(num: number): string {
 }
 
 export default function Home() {
-  const { nepseData, loading, error, isRefreshing, lastUpdated, refreshCount, refreshData } = useNepseData();
 
+  // Auth state for client-side rendering (MOVED TO TOP)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      setIsAuthenticated(!!token);
+    }
+  }, []);
+
+  // Handler for protected navigation
+  const handleProtectedNav = (path: string) => {
+    if (isAuthenticated) {
+      window.location.href = path;
+    } else {
+      setShowLoginPrompt(true);
+    }
+  };
+
+  // All other hooks
+  const { nepseData, loading, error, isRefreshing, lastUpdated, refreshCount, refreshData } = useNepseData();
   const nepseIndex = useMemo(() => nepseData?.indices?.find(i => i.symbol === 'NEPSE'), [nepseData]);
   const totalTurnover = useMemo(() => nepseData?.marketSummary?.find(m => m.name === 'Total Turnover Rs:')?.value || 0, [nepseData]);
   const totalVolume = useMemo(() => nepseData?.marketSummary?.find(m => m.name === 'Total Traded Shares')?.value || 0, [nepseData]);
@@ -165,7 +185,6 @@ export default function Home() {
   const losers = useMemo(() => nepseData?.stockSummary?.declined || 0, [nepseData]);
   const unchanged = useMemo(() => nepseData?.stockSummary?.unchanged || 0, [nepseData]);
   const otherIndices = useMemo(() => nepseData?.indices?.filter(i => i.symbol !== 'NEPSE') || [], [nepseData]);
-
   const allStocks: Stock[] = useMemo(() => nepseData?.liveCompanyData?.map(company => ({
     symbol: company.symbol,
     name: company.securityName,
@@ -181,22 +200,20 @@ export default function Home() {
     totalTradeQuantity: company.totalTradeQuantity,
     iconUrl: company.iconUrl
   })) || [], [nepseData]);
-
   const enrichStock = useCallback((stock: Stock): Stock => {
     const fullData = allStocks.find(s => s.symbol === stock.symbol);
     return fullData || stock;
   }, [allStocks]);
-
   const topGainers = useMemo(() => nepseData?.topGainers?.slice(0, 5).map(enrichStock) || [], [nepseData, enrichStock]);
   const topLosers = useMemo(() => nepseData?.topLosers?.slice(0, 5).map(enrichStock) || [], [nepseData, enrichStock]);
   const topTurnover = useMemo(() => nepseData?.topTurnover?.slice(0, 5).map(enrichStock) || [], [nepseData, enrichStock]);
-
   const marketSentiment = useMemo(() => {
     const total = gainers + losers + unchanged;
     if (total === 0) return 50;
     return Math.round((gainers / total) * 100);
   }, [gainers, losers, unchanged]);
 
+  // Conditional rendering after all hooks
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
@@ -281,30 +298,27 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-              
+              {/* Add gap between logo/title and nav buttons */}
+              <div className="flex-1" />
               <div className="flex items-center gap-6">
-                <button
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      const token = localStorage.getItem('token');
-                      if (token) {
-                        window.location.href = '/portfolio';
-                      } else {
-                        window.location.href = '/login';
-                      }
-                    }
-                  }}
-                  className="text-base font-semibold text-gray-700 hover:text-blue-600 transition-colors px-3 py-2 rounded-lg hover:bg-blue-50"
-                >
-                  Portfolio
-                </button>
-                <a href="/demo-trading" className="text-base font-semibold text-gray-700 hover:text-indigo-600 transition-colors px-3 py-2 rounded-lg hover:bg-indigo-50">
-                  Demo Trading
-                </a>
+                {isAuthenticated && (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleProtectedNav('/portfolio')}
+                      className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md hover:from-blue-600 hover:to-blue-800 transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
+                    >
+                      Portfolio
+                    </button>
+                    <button
+                      onClick={() => handleProtectedNav('/demo-trading')}
+                      className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-indigo-500 to-indigo-700 text-white shadow-md hover:from-indigo-600 hover:to-indigo-800 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+                    >
+                      Demo Trading
+                    </button>
+                  </div>
+                )}
               </div>
-              
               <div className="flex-1"></div>
-              
               <div className="flex items-center gap-3">
                 <button
                   onClick={refreshData}
@@ -322,19 +336,39 @@ export default function Home() {
                   )}
                   {isRefreshing ? 'Updating...' : 'Refresh'}
                 </button>
-                
                 <div className="hidden md:flex items-center gap-4">
-                  <a href="/login" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all">
-                    Login
-                  </a>
-                  <a href="/signup" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md hover:from-emerald-600 hover:to-green-700 transition-all">
-                    Signup
-                  </a>
+                  {isAuthenticated ? (
+                    <span className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md">Logged In</span>
+                  ) : (
+                    <>
+                      <a href="/login" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all">
+                        Login
+                      </a>
+                      <a href="/signup" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md hover:from-emerald-600 hover:to-green-700 transition-all">
+                        Signup
+                      </a>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </nav>
+        {/* Login Prompt Modal */}
+        {showLoginPrompt && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center border border-slate-200">
+              <h2 className="text-xl font-bold text-slate-800 mb-4">Login Required</h2>
+              <p className="text-slate-600 mb-6">You must be logged in to access Portfolio or Demo Trading features.</p>
+              <div className="flex flex-col gap-3">
+                <a href="/login" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all">Login</a>
+                <a href="/signup" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md hover:from-emerald-600 hover:to-green-700 transition-all">Signup</a>
+                <button onClick={() => setShowLoginPrompt(false)} className="mt-2 text-slate-500 hover:text-slate-700 text-sm">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* ...existing code... */}
 
         {/* Header with Market Status */}
         <header className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
