@@ -8,7 +8,7 @@ interface Trade {
   companyName: string;
   quantity: number;
   buyPrice: number;
-  currentPrice: number;
+  lastTradedPricethe: number;
   date: Date;
 }
 
@@ -40,15 +40,29 @@ export default function DemoTrading() {
   }, []);
 
   // Calculate profit/loss
+  // Calculate profit/loss and per-trade P/L
+  const [perTradePL, setPerTradePL] = useState<number[]>([]);
   const calculatePL = () => {
     let totalPL = 0;
+    const plArray: number[] = [];
     trades.forEach(trade => {
-      totalPL += (trade.currentPrice - trade.buyPrice) * trade.quantity;
+      const displayPrice = typeof trade.lastTradedPrice === 'number'
+        ? trade.lastTradedPrice
+        : (typeof trade.currentPrice === 'number' ? trade.currentPrice : 0);
+      const pl = (displayPrice - trade.buyPrice) * trade.quantity;
+      plArray.push(pl);
+      totalPL += pl;
     });
     setProfitLoss(totalPL);
+    setPerTradePL(plArray);
   };
 
-  // Add trade
+  // Recalculate profit/loss whenever trades change
+  useEffect(() => {
+    calculatePL();
+  }, [trades]);
+
+  // Add tradez
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -69,7 +83,8 @@ export default function DemoTrading() {
       companyName,
       quantity: Number(quantity),
       buyPrice: Number(buyPrice),
-      currentPrice: stock.closingPrice || stock.ltp || 0,
+      currentPrice: typeof stock.lastTradedPrice === 'number' ? stock.lastTradedPrice : (stock.closingPrice || stock.ltp || 0),
+      lastTradedPrice: typeof stock.lastTradedPrice === 'number' ? stock.lastTradedPrice : undefined,
       date: new Date(),
     };
     setTrades(prev => [...prev, newTrade]);
@@ -206,20 +221,25 @@ export default function DemoTrading() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {trades.map(trade => (
-                  <tr key={trade.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors">
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{trade.date.toLocaleDateString()} {trade.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                    <td className="px-6 py-4 font-bold text-blue-600 dark:text-blue-400">{trade.symbol}</td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{trade.companyName}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{trade.quantity}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">Rs. {trade.buyPrice.toLocaleString('en-NP', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">Rs. {trade.currentPrice.toLocaleString('en-NP', { minimumFractionDigits: 2 })}</td>
-                    <td className={`px-6 py-4 text-sm font-bold ${trade.currentPrice - trade.buyPrice >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{trade.currentPrice - trade.buyPrice >= 0 ? '+' : ''}Rs. {((trade.currentPrice - trade.buyPrice) * trade.quantity).toLocaleString('en-NP', { minimumFractionDigits: 2 })}</td>
-                    <td className="px-6 py-4">
-                      <button onClick={() => handleDelete(trade.id)} className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors" title="Delete"><FaTrash /></button>
-                    </td>
-                  </tr>
-                ))}
+                {trades.map(trade => {
+                  const displayPrice = typeof trade.lastTradedPrice === 'number'
+                    ? trade.lastTradedPrice
+                    : (typeof trade.currentPrice === 'number' ? trade.currentPrice : 0);
+                  return (
+                    <tr key={trade.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors">
+                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{trade.date.toLocaleDateString()} {trade.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="px-6 py-4 font-bold text-blue-600 dark:text-blue-400">{trade.symbol}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{trade.companyName}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{trade.quantity}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">Rs. {trade.buyPrice.toLocaleString('en-NP', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">Rs. {displayPrice.toLocaleString('en-NP', { minimumFractionDigits: 2 })}</td>
+                      <td className={`px-6 py-4 text-sm font-bold ${(displayPrice - trade.buyPrice) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{(displayPrice - trade.buyPrice) >= 0 ? '+' : ''}Rs. {((displayPrice - trade.buyPrice) * trade.quantity).toLocaleString('en-NP', { minimumFractionDigits: 2 })}</td>
+                      <td className="px-6 py-4">
+                        <button onClick={() => handleDelete(trade.id)} className="p-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors" title="Delete"><FaTrash /></button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
