@@ -26,7 +26,7 @@ export default function Login() {
       const data = await res.json();
       if (res.ok && data.status === 'success') {
         localStorage.setItem('token', data.token);
-        router.push('/portfolio');
+        router.push('/');
       } else {
         setError(data.message || 'Login failed. Please try again.');
       }
