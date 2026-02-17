@@ -1,19 +1,21 @@
- export function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
   
-  const token = localStorage.getItem('token');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
   }
   
   return headers;
 }
 
 export async function handleApiResponse<T>(response: Response): Promise<T> {
-   const responseClone = response.clone();
-  
+  const responseClone = response.clone();
+ 
   if (!response.ok) {
     const contentType = response.headers.get('content-type');
     
@@ -22,11 +24,10 @@ export async function handleApiResponse<T>(response: Response): Promise<T> {
         const errorData = await responseClone.json();
         throw new Error(errorData.error || errorData.message || `Request failed with status ${response.status}`);
       } catch {
-        // If JSON parsing fails, try text
         try {
           const errorText = await responseClone.text();
           if (errorText.includes('<!DOCTYPE')) {
-            throw new Error(`API route not found (404) or server error. Please check if the backend route exists.`);
+            throw new Error(`API route not found (404) or server error.`);
           }
           throw new Error(errorText || `Request failed with status ${response.status}`);
         } catch {
@@ -36,28 +37,31 @@ export async function handleApiResponse<T>(response: Response): Promise<T> {
     } else {
       const errorText = await responseClone.text();
       if (errorText.includes('<!DOCTYPE')) {
-        throw new Error(`API route not found. The server returned an HTML error page. Status: ${response.status}`);
+        throw new Error(`API route not found. Status: ${response.status}`);
       }
       throw new Error(`Server error: ${response.status} ${response.statusText}`);
     }
   }
   
-  // For successful responses, read the original response
-  return response.json();
+  const json = await response.json();
+  
+  if (json && typeof json === 'object' && 'success' in json) {
+    if (json.success && 'data' in json) {
+      return json.data as T;
+    } else if (!json.success && 'error' in json) {
+      throw new Error(json.error);
+    }
+  }
+  
+  return json as T;
 }
 
-// Simple fetch wrapper that prevents multiple reads
 export async function safeFetch<T>(
   url: string,
   options?: RequestInit
 ): Promise<T> {
   const headers = getAuthHeaders();
-   let fullUrl = url;
-  if (url.startsWith('/api/')) {
-     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-    fullUrl = `${backendUrl}${url}`;
-  }
-  const response = await fetch(fullUrl, {
+  const response = await fetch(url, {
     ...options,
     headers: {
       ...headers,

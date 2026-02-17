@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, ColorType } from 'lightweight-charts';
 import { FaArrowUp, FaArrowDown, FaCalendarAlt, FaChartLine, FaSync } from 'react-icons/fa';
 import type { ChartData } from '@/utils/nepseDataGenerator';
 
@@ -87,7 +87,7 @@ export default function NepseChart({
     }
     const chartOptions = {
       layout: {
-        background: { type: 'solid', color: theme === 'dark' ? '#0f172a' : '#ffffff' },
+        background: { type: ColorType.Solid, color: theme === 'dark' ? '#0f172a' : '#ffffff' },
         textColor: theme === 'dark' ? '#d1d5db' : '#374151',
         fontSize: 12,
       },
@@ -131,7 +131,7 @@ export default function NepseChart({
         priceFormatter: (price: number) => `Rs. ${price.toLocaleString('en-NP')}`,
       },
     };
-    const chart = createChart(chartContainerRef.current, chartOptions);
+    const chart = createChart(chartContainerRef.current, chartOptions as any);
     chartRef.current = chart;
     chart.applyOptions({
       watermark: {
@@ -142,10 +142,10 @@ export default function NepseChart({
         horzAlign: 'center',
         vertAlign: 'center',
       },
-    });
+    } as any);
     let series;
     if (chartType === 'candlestick') {
-      series = chart.addCandlestickSeries({
+      series = (chart as any).addCandlestickSeries({
         upColor: '#10b981',
         downColor: '#ef4444',
         borderVisible: false,
@@ -157,7 +157,7 @@ export default function NepseChart({
       });
       candlestickSeriesRef.current = series;
     } else if (chartType === 'line') {
-      series = chart.addLineSeries({
+      series = (chart as any).addLineSeries({
         color: '#3b82f6',
         lineWidth: 2,
         priceLineVisible: true,
@@ -170,7 +170,7 @@ export default function NepseChart({
       series.setData(formatChartData(data, chartType));
     }
     // Add volume series
-    const volumeSeries = chart.addHistogramSeries({
+    const volumeSeries = (chart as any).addHistogramSeries({
       color: '#6b7280',
       priceFormat: { type: 'volume' },
       priceScaleId: 'volume',
@@ -192,15 +192,17 @@ export default function NepseChart({
     if (data.length > 0) {
       const latestPrice = data[data.length - 1].close;
       chart.applyOptions({
-        priceLine: {
-          price: latestPrice,
-          color: '#f59e0b',
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: true,
-          title: 'Current',
+        watermark: {
+          priceLine: {
+            price: latestPrice,
+            color: '#f59e0b',
+            lineWidth: 1,
+            lineStyle: 2,
+            axisLabelVisible: true,
+            title: 'Current',
+          },
         },
-      });
+      } as any);
     }
     // Handle resize
     const handleResize = () => {

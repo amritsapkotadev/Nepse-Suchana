@@ -8,7 +8,8 @@ interface Trade {
   companyName: string;
   quantity: number;
   buyPrice: number;
-  lastTradedPricethe: number;
+  lastTradedPrice: number;
+  currentPrice?: number;
   date: Date;
 }
 

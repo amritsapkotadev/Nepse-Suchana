@@ -447,7 +447,7 @@ export default function Home() {
                     <IndexChart 
                       currentValue={nepseIndex?.currentValue || 0}
                       changePercent={nepseIndex?.changePercent || 0}
-                      isPositive={nepseIndex?.changePercent && nepseIndex.changePercent >= 0}
+                      isPositive={nepseIndex ? nepseIndex.changePercent >= 0 : true}
                     />
                   </div>
                 </div>
@@ -653,8 +653,6 @@ export default function Home() {
                     title="" 
                     showName={false} 
                     showTurnover={false}
-                    loading={isRefreshing}
-                    variant="gainers"
                   />
                 </div>
               </div>
@@ -683,8 +681,6 @@ export default function Home() {
                     title="" 
                     showName={false} 
                     showTurnover={false}
-                    loading={isRefreshing}
-                    variant="losers"
                   />
                 </div>
               </div>
@@ -713,8 +709,6 @@ export default function Home() {
                     title="" 
                     showName={false} 
                     showTurnover={true}
-                    loading={isRefreshing}
-                    variant="turnover"
                   />
                 </div>
               </div>

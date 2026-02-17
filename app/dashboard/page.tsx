@@ -6,7 +6,7 @@ export default function Dashboard() {
   const totalInvestment = 250000;
   const currentValue = 275000;
   const profitLoss = currentValue - totalInvestment;
-  const profitLossPercentage = ((profitLoss / totalInvestment) * 100).toFixed(2);
+  const profitLossPercentage = parseFloat(((profitLoss / totalInvestment) * 100).toFixed(2));
   const totalShares = 1200;
   const companiesHeld = 8;
 

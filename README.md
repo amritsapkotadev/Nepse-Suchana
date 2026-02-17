@@ -1,280 +1,347 @@
-
 # Nepse-Suchana
 
-A full-stack NEPSE (Nepal Stock Exchange) portfolio tracker and demo trading platform.
+A comprehensive full-stack web application for tracking Nepal Stock Exchange (NEPSE) portfolios, managing watchlists, and practicing demo trading with virtual currency.
 
-## Features 
+## Overview
 
-- User authentication (JWT-based)
-- Portfolio management (create, update, view portfolios)
-- Live NEPSE stock data integration
-- Demo trading accounts with virtual balance
-- Buy/sell stocks in demo trading mode
-- Transaction history for demo trades
-- Watchlist with unique stock symbols per user
-- Modern UI with Next.js and Tailwind CSS
+Nepse-Suchana provides real-time NEPSE stock data, portfolio management with multiple portfolios per user, personal watchlists, and a demo trading platform with Rs. 1 Crore virtual balance for practice trading.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 16 (App Router), React 19, TypeScript |
+| Styling | Tailwind CSS |
+| Backend | Next.js API Routes (Node.js Runtime) |
+| Database | PostgreSQL |
+| Authentication | JWT with httpOnly cookies |
+| External Data | NEPSE API (via sharepulse proxy) |
+
+## Features
+
+- **User Authentication** - Secure JWT-based login/registration with httpOnly cookie storage
+- **Portfolio Management** - Create up to 5 portfolios per user with weighted average price tracking
+- **Demo Trading** - Virtual trading account with Rs. 1 Crore balance, buy/sell transactions
+- **Personal Watchlist** - Custom stock watchlist per user with live prices
+- **Dividend Tracking** - Record and track cash dividends, bonus shares, and right shares
+- **Live NEPSE Data** - Real-time stock prices via NEPSE API proxy with auto-refresh
+- **Responsive UI** - Modern design with dark mode support
 
 ## Project Structure
 
 ```
-Nepse-Suchana/
-├── app/                  # Next.js frontend
-│   ├── (auth)/           # Login & signup pages
-│   ├── api/              # Next.js API routes (proxy to backend)
-│   ├── components/       # React UI components
-│   ├── dashboard/        # User dashboard
-│   ├── demo-trading/     # Demo trading UI
-│   ├── portfolio/        # Portfolio UI
-│   ├── watchlist/        # Watchlist UI
-│   └── ...
-├── backend/              # Node.js + Express backend
-│   ├── src/
-│   │   ├── config/       # DB setup & migration scripts
-│   │   ├── controller/   # Route controllers
-│   │   ├── models/       # SQL schema files
-│   │   └── Routes/       # Express route files
-│   ├── package.json
-│   └── server.js
-├── public/               # Static assets
-├── utils/                # Utility scripts
-└── ...
+nepse-suchana/
+├── app/                          # Next.js App Router
+│   ├── api/                      # API Route Handlers
+│   │   ├── auth/                # Authentication
+│   │   │   ├── login/
+│   │   │   └── register/
+│   │   ├── demotrading/         # Demo trading
+│   │   ├── dividends/           # Dividend records
+│   │   ├── health/              # Health check
+│   │   ├── nepse-chart/         # Chart data
+│   │   ├── nepse-proxy/         # NEPSE data proxy
+│   │   ├── portfolio-holdings/  # Holdings CRUD
+│   │   ├── portfolios/          # Portfolio CRUD
+│   │   ├── stocks/              # Stock data
+│   │   └── watchlist/           # Watchlist CRUD
+│   ├── (auth)/                  # Auth pages (login/signup)
+│   ├── components/              # React components
+│   ├── dashboard/               # Dashboard page
+│   ├── demo-trading/            # Demo trading UI
+│   ├── portfolio/               # Portfolio UI
+│   └── watchlist/               # Watchlist UI
+├── lib/                         # Shared utilities
+│   ├── db.ts                   # PostgreSQL connection pool
+│   ├── auth.ts                 # JWT authentication
+│   └── services/               # Business logic
+│       ├── auth.ts
+│       ├── demotrading.ts
+│       ├── dividends.ts
+│       ├── portfolio.ts
+│       ├── portfolioHoldings.ts
+│       ├── stocks.ts
+│       └── watchlist.ts
+├── components/                  # Reusable UI components
+├── db/                          # Database schema
+│   └── schema.sql              # PostgreSQL schema
+├── public/                      # Static assets
+├── .env                        # Environment variables
+├── .env.example                # Environment template
+└── package.json
 ```
 
-## Backend API Endpoints
+## Getting Started
 
-### Demo Trading
-- `POST   /api/demotrading` — Create demo trading account
-- `GET    /api/demotrading` — Get demo trading account details
-- `PUT    /api/demotrading` — Update demo trading account (balance)
-- `POST   /api/demotrading/transactions` — Add a buy/sell transaction
+### Prerequisites
 
-### Portfolio
-- `POST   /api/portfolios` — Create portfolio
-- `GET    /api/portfolios` — List portfolios
-- `POST   /api/portfolio-holdings` — Add stock to portfolio
-- ...
+- Node.js 18.x or higher
+- PostgreSQL 14.x or higher
 
-### Watchlist
-- `POST   /api/watchlist/add` — Add stock to watchlist (unique per user)
-- `POST   /api/watchlist/remove` — Remove stock from watchlist
-- `GET    /api/watchlist/:userId` — Get a user's watchlist
-- `GET    /api/watchlist/my` — Get authenticated user's watchlist
+### Installation
+
+```bash
+# Install dependencies
+npm install
+```
+
+### Environment Configuration
+
+1. Copy the example environment file:
+```bash
+cp .env.example .env
+```
+
+2. Update `.env` with your configuration:
+```env
+# Database connection string
+DATABASE_URL=postgresql://username:password@localhost:5432/nepse_db
+
+# JWT secret key (use a strong random string)
+JWT_SECRET=your-secure-secret-key-min-32-chars
+
+# NEPSE API endpoint
+NEXT_PUBLIC_NEPSE_API_URL=https://sharepulse.qzz.io/api/nepse/live-data
+```
+
+### Database Setup
+
+Execute the schema file to create all required tables:
+
+```bash
+# Using psql CLI
+psql $DATABASE_URL -f db/schema.sql
+
+# Or using a database client (pgAdmin, DBeaver, etc.)
+# Import db/schema.sql
+```
+
+### Running the Application
+
+```bash
+# Development
+npm run dev
+
+# Production build
+npm run build
+npm start
+```
+
+The application runs at `http://localhost:3000`. No separate backend server is required.
 
 ## Database Schema
 
-- `demotrading` — Demo trading accounts (per user)
-- `demotrading_transactions` — Buy/sell transactions for demo trading
-- `watchlist` — User watchlists (unique stock per user)
-- `users`, `portfolios`, `portfolio_holdings`, ...
+All tables are defined in `db/schema.sql`:
 
-## Setup & Run
-
-### Backend
-```bash
-cd backend
-npm install
-node ./src/config/migrate.js   # Run DB migrations
-node server.js                 # Start backend server
+### Users
+```sql
+users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+)
 ```
 
-### Frontend
-```bash
-npm install
-npm run dev
+### Portfolios
+```sql
+portfolios (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  name VARCHAR(255) NOT NULL,
+  initial_balance DECIMAL(15,2),
+  current_balance DECIMAL(15,2),
+  description TEXT,
+  created_at TIMESTAMP,
+  deleted_at TIMESTAMP
+)
 ```
 
-## Demo Trading Transaction Example (POST /api/demotrading/transactions)
+### Portfolio Holdings
+```sql
+portfolio_holdings (
+  id SERIAL PRIMARY KEY,
+  portfolio_id INTEGER REFERENCES portfolios(id),
+  stock_symbol VARCHAR(50) NOT NULL,
+  quantity INTEGER NOT NULL,
+  average_price DECIMAL(15,2) NOT NULL,
+  cash_dividend DECIMAL(15,2),
+  right_share INTEGER,
+  bonus_share INTEGER,
+  other_note TEXT,
+  UNIQUE(portfolio_id, stock_symbol)
+)
+```
+
+### Watchlist
+```sql
+watchlist (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  stock_symbol VARCHAR(50) NOT NULL,
+  UNIQUE(user_id, stock_symbol)
+)
+```
+
+### Demo Trading
+```sql
+-- Account (one per user, starts with Rs. 1 Crore)
+demotrading (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER UNIQUE REFERENCES users(id),
+  current_balance DECIMAL(15,2)
+)
+
+-- Transactions
+demotrading_transactions (
+  id SERIAL PRIMARY KEY,
+  demotrading_id INTEGER REFERENCES demotrading(id),
+  stock_symbol VARCHAR(50),
+  side VARCHAR(10) CHECK (side IN ('BUY', 'SELL')),
+  quantity INTEGER,
+  price DECIMAL(15,2)
+)
+```
+
+### Dividends
+```sql
+dividends (
+  id SERIAL PRIMARY KEY,
+  portfolio_id INTEGER REFERENCES portfolios(id),
+  stock_symbol VARCHAR(50),
+  type VARCHAR(50),
+  value DECIMAL(15,2),
+  date DATE,
+  notes TEXT
+)
+```
+
+## API Reference
+
+All endpoints return JSON responses in the following format:
+
 ```json
-{
-  "demotrading_id": 1,
-  "stock_symbol": "NABIL",
-  "side": "BUY",
-  "quantity": 100,
-  "price": 500.25
-}
+// Success
+{ "success": true, "data": { ... } }
+
+// Error
+{ "success": false, "error": "Error message" }
 ```
 
-## Contributing
-Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
+### Authentication
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/api/auth/register` | Register new user | No |
+| POST | `/api/auth/login` | Login user | No |
+
+### Portfolios
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/portfolios` | List user portfolios | Yes |
+| POST | `/api/portfolios` | Create portfolio | Yes |
+| GET | `/api/portfolios/[id]` | Get portfolio details | Yes |
+| DELETE | `/api/portfolios/[id]` | Delete portfolio | Yes |
+
+### Portfolio Holdings
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/portfolio-holdings?portfolio_id=X` | Get holdings | Yes |
+| POST | `/api/portfolio-holdings` | Add holding | Yes |
+| DELETE | `/api/portfolio-holdings/[id]` | Remove holding | Yes |
+
+### Demo Trading
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/demotrading` | Get account | Yes |
+| POST | `/api/demotrading` | Create account or add transaction | Yes |
+| PUT | `/api/demotrading` | Update balance | Yes |
+| DELETE | `/api/demotrading?id=X` | Delete transaction | Yes |
+
+### Watchlist
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/watchlist` | Get watchlist | Yes |
+| POST | `/api/watchlist` | Add stock | Yes |
+| POST | `/api/watchlist/remove` | Remove stock | Yes |
+
+### Stocks & Data
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/stocks` | Fetch NEPSE stocks | No |
+| GET | `/api/nepse-proxy` | Proxy to NEPSE | No |
+| GET | `/api/dividends?portfolio_id=X` | Get dividends | Yes |
+| POST | `/api/dividends` | Add dividend | Yes |
+| GET | `/api/health` | Health check | No |
+
+## Authentication Flow
+
+1. **Register**: `POST /api/auth/register` with `{name, email, password}`
+2. **Login**: `POST /api/auth/login` with `{email, password}`
+   - Server returns JWT token and sets httpOnly cookie
+3. **Authenticated Requests**: Include token in header:
+   ```
+   Authorization: Bearer <token>
+   ```
+4. **Verification**: `lib/auth.ts` exports `verifyAuth()` function used in all protected routes
+
+## Demo Trading Usage
+
+1. Create a demo trading account (automatically starts with Rs. 1 Crore):
+```bash
+curl -X POST http://localhost:3000/api/demotrading \
+  -H "Authorization: Bearer <token>"
+```
+
+2. Add a buy transaction:
+```bash
+curl -X POST http://localhost:3000/api/demotrading \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "demotrading_id": 1,
+    "stock_symbol": "NABIL",
+    "side": "BUY",
+    "quantity": 100,
+    "price": 500.25
+  }'
+```
+
+## Frontend Integration
+
+The frontend uses a custom `safeFetch` utility (`app/lib/api-utils.ts`) that:
+- Automatically includes authentication headers
+- Unwraps `{success, data}` response format
+- Throws descriptive errors for failed requests
+
+```typescript
+import { safeFetch } from '@/app/lib/api-utils';
+
+const portfolios = await safeFetch<Portfolio[]>('/api/portfolios');
+```
+
+## Development Commands
+
+```bash
+npm run dev      # Start development server
+npm run build    # Production build
+npm run start    # Start production server
+npm run lint     # Run ESLint
+```
+
+## Security Considerations
+
+- JWT secrets should be long random strings (minimum 32 characters)
+- Cookies are httpOnly, sameSite: strict, and secure in production
+- All database queries use parameterized statements (no SQL injection)
+- API routes use Node.js runtime (not edge) due to pg and jwt dependencies
 
 ## License
-[MIT](LICENSE)
 
-A comprehensive web application for tracking stocks, managing portfolios, and maintaining a watchlist for the Nepal Stock Exchange (NEPSE). Built with Next.js (React), Node.js, Express, and PostgreSQL.
-
----
-
-## Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Setup & Installation](#setup--installation)
-- [Environment Variables](#environment-variables)
-- [Database](#database)
-- [Backend API](#backend-api)
-- [Frontend](#frontend)
-- [Development Scripts](#development-scripts)
-- [Troubleshooting](#troubleshooting)
-- [License](#license)
-- [Author](#author)
-
----
-
-## Features
-- **Live NEPSE Data:** Real-time stock data with auto-refresh (every 20 seconds).
-- **Portfolio Management:** Add, merge, and track stocks with weighted average price calculation.
-- **Watchlist:** Add/remove stocks to a personal watchlist.
-- **Global Stock Search:** Search and view details for all NEPSE stocks.
-- **Charts:** Visualize stock performance with custom charting.
-- **Authentication:** User login and signup (basic auth).
-- **Responsive UI:** Modern, mobile-friendly design with dark mode support.
-
----
-
-## Tech Stack
-- **Frontend:** Next.js (App Router), React, TypeScript, Tailwind CSS
-- **Backend:** Node.js, Express.js
-- **Database:** PostgreSQL
-- **API Integration:** NEPSE API (via backend proxy)
-
----
-
-## Project Structure
-```
-/ (root)
-├── app/                # Next.js frontend (pages, components)
-│   ├── (auth)/         # Auth pages (login, signup)
-│   ├── components/     # Reusable React components
-│   ├── portfolio/      # Portfolio UI
-│   ├── watchlist/      # Watchlist UI
-│   └── ...
-├── backend/            # Node.js/Express backend
-│   ├── src/
-│   │   ├── config/     # DB setup, migration scripts
-│   │   ├── controller/ # Route controllers (auth, portfolio, watchlist)
-│   │   ├── models/     # SQL schema files
-│   │   └── Routes/     # Express route definitions
-│   ├── .env            # Backend environment variables
-│   └── server.js       # Express server entry point
-├── public/             # Static assets
-├── package.json        # Frontend dependencies
-└── README.md           # Project documentation
-```
-
----
-
-## Setup & Installation
-
-### Prerequisites
-- Node.js (v18+ recommended)
-- PostgreSQL (local or remote instance)
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/amritsapkotadev/Nepse-Suchana.git
-cd Nepse-Suchana
-```
-
-### 2. Install Dependencies
-#### Frontend
-```bash
-npm install
-```
-#### Backend
-```bash
-cd backend
-npm install
-```
-
-### 3. Configure Environment Variables
-- Copy `.env.example` to `.env` in both root and `backend/` folders (if provided).
-- Set the following variables in `backend/.env`:
-  - `DATABASE_URL` (PostgreSQL connection string)
-  - `NEPSE_API_KEY` (if required by NEPSE API)
-  - `PORT` (optional, default: 3001)
-
-### 4. Run Database Migrations
-```bash
-cd backend
-node src/config/migrate.js
-```
-
-### 5. Start the Backend Server
-```bash
-node server.js
-```
-
-### 6. Start the Frontend (Next.js)
-```bash
-cd ..
-npm run dev
-```
-
----
-
-## Environment Variables
-**Backend (`backend/.env`):**
-```
-DATABASE_URL=postgres://user:password@localhost:5432/nepse_db
-NEPSE_API_KEY=your_nepse_api_key
-PORT=3001
-```
-
----
-
-## Database
-- **Schema:** Defined in `backend/src/models/`
-  - `usermodel.sql`: User table
-  - `portfolio.sql`: Portfolio table
-  - `watchlist` table: Used in controllers (see migration scripts)
-- **Migrations:** Run with `node src/config/migrate.js`
-
----
-
-## Backend API
-- **Base URL:** `http://localhost:3001/api/`
-- **Routes:**
-  - `/auth` - Authentication (login, signup)
-  - `/portfolio` - Portfolio CRUD
-  - `/watchlist` - Watchlist CRUD
-  - `/health` - Health check
-- **Controllers:** Located in `backend/src/controller/`
-- **Database Access:** All controllers use a shared PostgreSQL pool (`src/db.js`)
-
----
-
-## Frontend
-- **Location:** `/app`
-- **Key Files:**
-  - `page.tsx`: Home page, live NEPSE data, auto-refresh logic
-  - `components/`: StockTable, GlobalStockSearch, Stockdetailmodal, etc.
-  - `portfolio/`, `watchlist/`: Portfolio and watchlist UIs
-- **Data Fetching:**
-  - Uses `/api/nepse-proxy` for client-safe NEPSE data fetching
-  - Auto-refreshes every 20 seconds without full page reload
-
----
-
-## Development Scripts
-- `npm run dev` - Start Next.js frontend in development mode
-- `node server.js` (in backend) - Start Express backend
-- `node src/config/migrate.js` (in backend) - Run DB migrations
-
----
-
-## Troubleshooting
-- **Module Not Found:** Ensure all import paths match file names (case-sensitive on Linux/macOS).
-- **Database Errors:** Check `DATABASE_URL` and that PostgreSQL is running.
-- **API Key Issues:** Make sure `NEPSE_API_KEY` is set in backend `.env` and not exposed to frontend.
-- **Port Conflicts:** Change `PORT` in `.env` if 3001 is in use.
-- **Live Data Not Updating:** Ensure backend is running and `/api/nepse-proxy` is reachable from frontend.
-
----
-
-## License
-MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-## Author
-[Amrit Sapkota](https://github.com/amritsapkotadev)
+MIT License
