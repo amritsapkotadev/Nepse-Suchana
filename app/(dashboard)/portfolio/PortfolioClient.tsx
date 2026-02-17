@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { safeFetch } from "../lib/api-utils";
+import { safeFetch } from "@/app/lib/api-utils";
 import {
   FaSearch, FaBuilding, FaHashtag, FaMoneyBillWave, FaPlusCircle,
   FaTrash, FaChartLine, FaInfoCircle, FaEdit, FaEye, FaEyeSlash,
