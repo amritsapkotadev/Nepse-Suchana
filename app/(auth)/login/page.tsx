@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api-client';
+import { BarChart3 } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -55,8 +56,8 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/50 mb-4">
-            <span className="text-3xl">📈</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 mb-4">
+            <BarChart3 className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
             Welcome Back
