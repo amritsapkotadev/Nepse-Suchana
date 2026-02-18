@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { api } from '@/lib/api-client';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -32,22 +33,12 @@ export default function SignupPage() {
 
   const onSubmit = async (data: SignupForm) => {
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: data.name, email: data.email, password: data.password })
-      });
-      
-      const json = await res.json();
-      
-      if (res.ok && json.success) {
-        toast.success('Account created! Please login.');
-        router.push('/login');
-      } else {
-        toast.error(json.error || 'Signup failed');
-      }
-    } catch {
-      toast.error('Signup failed. Please try again.');
+      await api.post('/api/auth/register', { name: data.name, email: data.email, password: data.password });
+      toast.success('Account created! Please login.');
+      router.push('/login');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Signup failed. Please try again.';
+      toast.error(message);
     }
   };
 

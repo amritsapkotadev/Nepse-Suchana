@@ -1,14 +1,8 @@
 import toast from 'react-hot-toast';
 
-interface ApiClientOptions extends RequestInit {
-  skipToast?: boolean;
-}
-
-class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-    this.name = 'ApiError';
-  }
+export interface ApiError extends Error {
+  status?: number;
+  code?: string;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -26,84 +20,90 @@ function getAuthHeaders(): Record<string, string> {
   return headers;
 }
 
-export async function apiClient<T>(
-  url: string,
-  options: ApiClientOptions = {}
-): Promise<T> {
-  const { skipToast = false, ...fetchOptions } = options;
+async function handleResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get('content-type');
   
-  const headers = {
-    ...getAuthHeaders(),
-    ...fetchOptions.headers,
-  };
-
-  try {
-    const response = await fetch(url, {
-      ...fetchOptions,
-      headers,
-    });
-
-    const contentType = response.headers.get('content-type');
-    let data;
+  if (!response.ok) {
+    let errorMessage = `Request failed with status ${response.status}`;
     
     if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      const text = await response.text();
-      if (!response.ok) {
-        throw new ApiError(response.status, text || `Request failed with status ${response.status}`);
-      }
-      return text as T;
-    }
-
-    if (!response.ok) {
-      const errorMessage = data?.error || data?.message || `Request failed with status ${response.status}`;
+      const data = await response.json();
+      errorMessage = data.error || data.message || errorMessage;
       
-      if (!skipToast) {
-        if (response.status === 401) {
-          toast.error('Session expired. Please login again.');
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
+          toast.error('Session expired. Please login again.');
           window.location.href = '/login';
-        } else {
-          toast.error(errorMessage);
         }
+      } else {
+        toast.error(errorMessage);
       }
-      
-      throw new ApiError(response.status, errorMessage);
     }
-
+    
+    const error: ApiError = new Error(errorMessage);
+    error.status = response.status;
+    throw error;
+  }
+  
+  if (contentType && contentType.includes('application/json')) {
+    const data = await response.json();
+    
     if (data && typeof data === 'object' && 'success' in data) {
       if (data.success && 'data' in data) {
         return data.data as T;
       } else if (!data.success && 'error' in data) {
-        throw new ApiError(400, data.error);
+        toast.error(data.error);
+        const error: ApiError = new Error(data.error);
+        error.status = 400;
+        throw error;
       }
     }
-
+    
     return data as T;
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
-    
-    if (!skipToast) {
-      toast.error('Network error. Please try again.');
-    }
-    
-    throw new ApiError(0, 'Network error');
   }
+  
+  return {} as T;
 }
 
 export const api = {
-  get: <T>(url: string, options?: ApiClientOptions) => 
-    apiClient<T>(url, { ...options, method: 'GET' }),
-  
-  post: <T>(url: string, body?: unknown, options?: ApiClientOptions) => 
-    apiClient<T>(url, { ...options, method: 'POST', body: JSON.stringify(body) }),
-  
-  put: <T>(url: string, body?: unknown, options?: ApiClientOptions) => 
-    apiClient<T>(url, { ...options, method: 'PUT', body: JSON.stringify(body) }),
-  
-  delete: <T>(url: string, options?: ApiClientOptions) => 
-    apiClient<T>(url, { ...options, method: 'DELETE' }),
+  async get<T>(url: string, options?: RequestInit): Promise<T> {
+    const response = await fetch(url, {
+      ...options,
+      method: 'GET',
+      headers: { ...getAuthHeaders(), ...options?.headers }
+    });
+    return handleResponse<T>(response);
+  },
+
+  async post<T>(url: string, body?: unknown, options?: RequestInit): Promise<T> {
+    const response = await fetch(url, {
+      ...options,
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: body ? JSON.stringify(body) : undefined
+    });
+    return handleResponse<T>(response);
+  },
+
+  async put<T>(url: string, body?: unknown, options?: RequestInit): Promise<T> {
+    const response = await fetch(url, {
+      ...options,
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: body ? JSON.stringify(body) : undefined
+    });
+    return handleResponse<T>(response);
+  },
+
+  async delete<T>(url: string, options?: RequestInit): Promise<T> {
+    const response = await fetch(url, {
+      ...options,
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    return handleResponse<T>(response);
+  }
 };
+
+export default api;

@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState, useCallback, useMemo } from "react";
+import { useAuth } from "@/components/AuthProvider";
 import StockTable from './components/StockTable';
 import GlobalStockSearch from './components/GlobalStockSearch';
 import IndexChart from './components/IndexChart';
+import Link from 'next/link';
 
 interface Stock {
   symbol: string;
@@ -156,18 +158,10 @@ function formatCrore(num: number): string {
 }
 
 export default function Home() {
-
-  // Auth state for client-side rendering (MOVED TO TOP)
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token');
-      setIsAuthenticated(!!token);
-    }
-  }, []);
 
-  // Handler for protected navigation
   const handleProtectedNav = (path: string) => {
     if (isAuthenticated) {
       window.location.href = path;
@@ -176,7 +170,6 @@ export default function Home() {
     }
   };
 
-  // All other hooks
   const { nepseData, loading, error, isRefreshing, lastUpdated, refreshCount, refreshData } = useNepseData();
   const nepseIndex = useMemo(() => nepseData?.indices?.find(i => i.symbol === 'NEPSE'), [nepseData]);
   const totalTurnover = useMemo(() => nepseData?.marketSummary?.find(m => m.name === 'Total Turnover Rs:')?.value || 0, [nepseData]);
@@ -279,81 +272,6 @@ export default function Home() {
       </div>
 
       <div className="relative z-10">
-        {/* Modern Navbar */}
-        <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-200/50 shadow-lg">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-20">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-md">
-                  <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                </div>
-                <div>
-                  <span className="text-2xl font-extrabold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent tracking-tight">
-                    Nepse Suchana
-                  </span>
-                  <p className="text-xs text-gray-500 -mt-1 font-medium">
-                    Smart Portfolio & Trading
-                  </p>
-                </div>
-              </div>
-              {/* Add gap between logo/title and nav buttons */}
-              <div className="flex-1" />
-              <div className="flex items-center gap-6">
-                {isAuthenticated && (
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => handleProtectedNav('/portfolio')}
-                      className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-blue-700 text-white shadow-md hover:from-blue-600 hover:to-blue-800 transition-all focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
-                    >
-                      Portfolio
-                    </button>
-                    <button
-                      onClick={() => handleProtectedNav('/demo-trading')}
-                      className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-indigo-500 to-indigo-700 text-white shadow-md hover:from-indigo-600 hover:to-indigo-800 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
-                    >
-                      Demo Trading
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className="flex-1"></div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={refreshData}
-                  disabled={isRefreshing}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-medium shadow-md hover:shadow-lg transition-all disabled:opacity-50"
-                >
-                  {isRefreshing ? (
-                    <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                  )}
-                  {isRefreshing ? 'Updating...' : 'Refresh'}
-                </button>
-                <div className="hidden md:flex items-center gap-4">
-                  {isAuthenticated ? (
-                    <span className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md">Logged In</span>
-                  ) : (
-                    <>
-                      <a href="/login" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md hover:from-blue-600 hover:to-indigo-700 transition-all">
-                        Login
-                      </a>
-                      <a href="/signup" className="px-5 py-2 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-md hover:from-emerald-600 hover:to-green-700 transition-all">
-                        Signup
-                      </a>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </nav>
         {/* Login Prompt Modal */}
         {showLoginPrompt && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

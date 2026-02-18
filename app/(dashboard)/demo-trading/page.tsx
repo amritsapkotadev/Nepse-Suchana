@@ -8,7 +8,7 @@ interface Trade {
   companyName: string;
   quantity: number;
   buyPrice: number;
-  lastTradedPrice: number;
+  lastTradedPrice?: number;
   currentPrice?: number;
   date: Date;
 }
@@ -21,9 +21,10 @@ export default function DemoTrading() {
   const [profitLoss, setProfitLoss] = useState(0);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
+  type StockData = { symbol: string; securityName: string; lastTradedPrice?: number; closingPrice?: number; ltp?: number };
+  const [suggestions, setSuggestions] = useState<StockData[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [allStocks, setAllStocks] = useState<any[]>([]);
+  const [allStocks, setAllStocks] = useState<StockData[]>([]);
 
   // Fetch all stocks on mount for instant suggestions
   useEffect(() => {
@@ -33,7 +34,7 @@ export default function DemoTrading() {
         if (!res.ok) throw new Error("Failed to fetch stocks");
         const data = await res.json();
         setAllStocks(data.liveCompanyData || []);
-      } catch (err) {
+      } catch {
         setAllStocks([]);
       }
     };
@@ -41,26 +42,22 @@ export default function DemoTrading() {
   }, []);
 
   // Calculate profit/loss
-  // Calculate profit/loss and per-trade P/L
-  const [perTradePL, setPerTradePL] = useState<number[]>([]);
   const calculatePL = () => {
     let totalPL = 0;
-    const plArray: number[] = [];
     trades.forEach(trade => {
       const displayPrice = typeof trade.lastTradedPrice === 'number'
         ? trade.lastTradedPrice
         : (typeof trade.currentPrice === 'number' ? trade.currentPrice : 0);
       const pl = (displayPrice - trade.buyPrice) * trade.quantity;
-      plArray.push(pl);
       totalPL += pl;
     });
     setProfitLoss(totalPL);
-    setPerTradePL(plArray);
   };
 
   // Recalculate profit/loss whenever trades change
   useEffect(() => {
     calculatePL();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trades]);
 
   // Add tradez

@@ -463,6 +463,7 @@ export default function MultiPortfolioTracker() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Your Portfolios</h2>
           <p className="text-gray-600 dark:text-gray-400">Manage and track multiple investment portfolios</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">Max 5 portfolios • Unique names only</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
@@ -924,39 +925,6 @@ export default function MultiPortfolioTracker() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Header */}
-      <nav className="sticky top-0 z-50 bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-700/50 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-                <FaChartLine className="text-white w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">
-                  Multi-Portfolio Manager
-                </span>
-                <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">
-                  Advanced Investment Tracking
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
-                <FaCalendarAlt className="inline mr-2" />
-                {new Date().toLocaleDateString('en-NP')}
-              </div>
-              <button
-                onClick={() => window.location.href = '/dashboard'}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-medium hover:shadow-lg transition-all shadow-md"
-              >
-                Back to Dashboard
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Messages */}
         <AnimatePresence>
@@ -1541,20 +1509,6 @@ export default function MultiPortfolioTracker() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Footer */}
-      <footer className="mt-12 py-8 border-t border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-800/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Multi-Portfolio Manager • Advanced Investment Tracking • {new Date().getFullYear()}
-            </p>
-            <p className="text-gray-400 dark:text-gray-500 text-xs mt-2">
-              Maximum 5 portfolios per user • Portfolio names must be unique
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

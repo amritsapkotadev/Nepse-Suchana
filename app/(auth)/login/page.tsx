@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/AuthProvider';
 import toast from 'react-hot-toast';
+import { api } from '@/lib/api-client';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -29,23 +30,14 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
+      const response = await api.post<{ token: string; user: { id: number; name: string; email: string } }>('/api/auth/login', data);
       
-      const json = await res.json();
-      
-      if (res.ok && json.success) {
-        login(json.token, json.user);
-        toast.success('Welcome back!');
-        router.push('/dashboard');
-      } else {
-        toast.error(json.error || 'Login failed');
-      }
-    } catch {
-      toast.error('Login failed. Please try again.');
+      login(response.token, response.user);
+      toast.success('Welcome back!');
+      router.push('/dashboard');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Login failed. Please try again.';
+      toast.error(message);
     }
   };
 
@@ -124,7 +116,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-sm text-slate-600 dark:text-slate-400 mt-6">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link href="/signup" className="font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition">
               Sign up
             </Link>
