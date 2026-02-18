@@ -462,7 +462,7 @@ export default function Home() {
           {/* Market Summary & Sector Indices - Side by Side on Desktop */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
             {/* Market Summary Section */}
-            <div>
+            <div className="h-full">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-800">Market Summary</h2>
@@ -492,7 +492,7 @@ export default function Home() {
             </div>
 
             {/* Sector Indices Section */}
-            <div>
+            <div className="h-full">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-800">Sector Indices</h2>
@@ -504,23 +504,40 @@ export default function Home() {
               </div>
 
               <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 hover:shadow-2xl transition-shadow duration-300">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {otherIndices.slice(0, 12).map((index) => (
-                    <div key={index.symbol} className="bg-slate-50 p-3 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-slate-700 truncate flex-1">
-                          {index.name.split(' ')[0]}
-                        </span>
-                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${index.changePercent >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                          {index.changePercent >= 0 ? '+' : ''}{index.changePercent.toFixed(2)}%
-                        </span>
-                      </div>
-                      <div className="text-sm font-bold text-slate-800">
-                        {index.currentValue.toFixed(2)}
-                      </div>
+                {/* Float - Full Width */}
+                {otherIndices.find(i => i.name.includes('Float')) && (
+                  <div className="mb-2">
+                    {(() => {
+                      const floatIdx = otherIndices.find(i => i.name.includes('Float'));
+                      return floatIdx ? (
+                        <div key={floatIdx.symbol} className="bg-slate-50 p-2 rounded-lg border border-slate-200 h-full">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium text-slate-700">Float Index</span>
+                            <span className={`text-xs font-bold ${floatIdx.changePercent >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                              {floatIdx.changePercent >= 0 ? '+' : ''}{floatIdx.changePercent.toFixed(2)}%
+                            </span>
+                          </div>
+                          <div className="text-sm font-bold text-slate-800">{floatIdx.currentValue.toFixed(2)}</div>
+                        </div>
+                      ) : null;
+                    })()}
+                  </div>
+                )}
+                
+                {/* Sensitive Indices - Each on separate line */}
+                {otherIndices.filter(i => i.name.includes('Sensitive')).slice(0, 4).map((index) => (
+                  <div key={index.symbol} className="bg-slate-50 p-2 rounded-lg border border-slate-200 mb-2 h-full">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-slate-700">Sensitive</span>
+                      <span className={`text-xs font-bold ${index.changePercent >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                        {index.changePercent >= 0 ? '+' : ''}{index.changePercent.toFixed(2)}%
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <div className="text-sm font-bold text-slate-800">
+                      {index.currentValue.toFixed(2)}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
