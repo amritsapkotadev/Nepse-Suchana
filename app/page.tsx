@@ -332,10 +332,18 @@ export default function Home() {
                       <h2 className="text-2xl font-bold text-slate-800 mb-1">NEPSE Index</h2>
                       <p className="text-slate-600">Nepal Stock Exchange Composite Index</p>
                     </div>
-                    <div className={`px-5 py-2.5 rounded-xl text-lg font-bold ${nepseIndex?.changePercent && nepseIndex.changePercent >= 0 
+                    <div className={`px-5 py-2.5 rounded-xl text-lg font-bold flex items-center gap-1 ${nepseIndex?.changePercent && nepseIndex.changePercent >= 0 
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                       : 'bg-red-50 text-red-700 border border-red-200'}`}>
-                      {nepseIndex?.changePercent && nepseIndex.changePercent >= 0 ? '↗' : '↘'} 
+                      {nepseIndex?.changePercent && nepseIndex.changePercent >= 0 ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        </svg>
+                      )}
                       {Math.abs(nepseIndex?.changePercent || 0).toFixed(2)}%
                     </div>
                   </div>
@@ -527,8 +535,17 @@ export default function Home() {
                       <div className="text-lg font-bold text-slate-800 mb-1">
                         {index.currentValue.toFixed(2)}
                       </div>
-                      <div className={`text-sm font-medium ${index.change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {index.change >= 0 ? '↗' : '↘'} {Math.abs(index.change).toFixed(2)}
+                      <div className={`text-sm font-medium flex items-center gap-1 ${index.change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {index.change >= 0 ? (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                          </svg>
+                        )}
+                        {Math.abs(index.change).toFixed(2)}
                       </div>
                     </div>
                   </div>
@@ -559,7 +576,6 @@ export default function Home() {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-slate-800">Top Gainers</h3>
-                        <p className="text-slate-600">Highest daily gain percentage</p>
                       </div>
                     </div>
                     <span className="px-4 py-2 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg border border-emerald-200">
@@ -587,7 +603,6 @@ export default function Home() {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-slate-800">Top Losers</h3>
-                        <p className="text-slate-600">Highest daily loss percentage</p>
                       </div>
                     </div>
                     <span className="px-4 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-lg border border-red-200">
@@ -615,7 +630,6 @@ export default function Home() {
                       </div>
                       <div>
                         <h3 className="text-xl font-bold text-slate-800">Top Turnover</h3>
-                        <p className="text-slate-600">Highest trading volume</p>
                       </div>
                     </div>
                     <span className="px-4 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg border border-blue-200">
@@ -696,11 +710,6 @@ export default function Home() {
                   </ul>
                 </div>
               </div>
-            </div>
-            
-            <div className="border-t border-slate-200 mt-10 pt-8 text-center text-slate-500 text-sm">
-              <p>© {new Date().getFullYear()} Nepse Suchana. All rights reserved. Data provided by NEPSE API. Market data delayed by 15 minutes.</p>
-              <p className="mt-2">This platform is for informational purposes only. Always verify with official sources before making investment decisions.</p>
             </div>
           </div>
         </footer>
