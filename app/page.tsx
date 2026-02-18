@@ -459,97 +459,68 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Market Summary Section */}
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-800">Market Summary</h2>
-                <p className="text-slate-600">Key market statistics and indicators</p>
-              </div>
-              <div className="flex items-center gap-4">
+          {/* Market Summary & Sector Indices - Side by Side on Desktop */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+            {/* Market Summary Section */}
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-800">Market Summary</h2>
+                  <p className="text-slate-600">Key market statistics</p>
+                </div>
                 {isRefreshing && (
                   <div className="flex items-center gap-2 text-blue-600">
                     <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    <span className="text-sm">Updating...</span>
                   </div>
                 )}
-                <button
-                  onClick={refreshData}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  View Full Details →
-                </button>
               </div>
-            </div>
 
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-8 hover:shadow-2xl transition-shadow duration-300">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {nepseData.marketSummary?.slice(0, 8).map((summary, index) => (
-                  <div 
-                    key={index} 
-                    className="group bg-slate-50 hover:bg-white p-5 rounded-xl border border-slate-200 hover:border-blue-300 transition-all duration-300 hover:scale-[1.02] cursor-pointer"
-                  >
-                    <div className="text-sm text-slate-500 mb-2 truncate">{summary.name}</div>
-                    <div className="text-xl font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                      {summary.name.includes('Turnover') ? `₹${formatCrore(summary.value)} Cr` : formatNumber(summary.value)}
+              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 hover:shadow-2xl transition-shadow duration-300">
+                <div className="grid grid-cols-2 gap-4">
+                  {nepseData.marketSummary?.slice(2, 8).map((summary, index) => (
+                    <div key={index} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                      <div className="text-sm text-slate-500 mb-1 truncate">{summary.name}</div>
+                      <div className="text-lg font-bold text-slate-800">
+                        {summary.name.includes('Turnover') ? `₹${formatCrore(summary.value)} Cr` : formatNumber(summary.value)}
+                      </div>
                     </div>
-                    <div className="h-1 w-12 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full mt-3 transform group-hover:w-full transition-all duration-300"></div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Sector Indices Section */}
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-800">Sector Indices</h2>
-                <p className="text-slate-600">Performance across different market sectors</p>
+            {/* Sector Indices Section */}
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-800">Sector Indices</h2>
+                  <p className="text-slate-600">Performance across sectors</p>
+                </div>
+                <span className="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg">
+                  {otherIndices.length} sectors
+                </span>
               </div>
-              <span className="px-4 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 text-slate-700 text-sm font-medium rounded-lg border border-blue-100">
-                {otherIndices.length} sectors
-              </span>
-            </div>
 
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden hover:shadow-2xl transition-shadow duration-300">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 p-8">
-                {otherIndices.slice(0, 12).map((index) => (
-                  <div 
-                    key={index.symbol} 
-                    className="bg-white p-5 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300 hover:-translate-y-2 cursor-pointer group"
-                  >
-                    <div className="flex flex-col">
-                      <div className="flex items-start justify-between mb-3">
-                        <span className="text-sm font-medium text-slate-700 truncate group-hover:text-blue-600 transition-colors">
+              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 hover:shadow-2xl transition-shadow duration-300">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {otherIndices.slice(0, 12).map((index) => (
+                    <div key={index.symbol} className="bg-slate-50 p-3 rounded-lg border border-slate-200 hover:border-blue-300 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium text-slate-700 truncate flex-1">
                           {index.name.split(' ')[0]}
                         </span>
-                        <span className={`text-xs font-bold px-2 py-1 rounded ${index.changePercent >= 0 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                          : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${index.changePercent >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                           {index.changePercent >= 0 ? '+' : ''}{index.changePercent.toFixed(2)}%
                         </span>
                       </div>
-                      <div className="text-lg font-bold text-slate-800 mb-1">
+                      <div className="text-sm font-bold text-slate-800">
                         {index.currentValue.toFixed(2)}
                       </div>
-                      <div className={`text-sm font-medium flex items-center gap-1 ${index.change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {index.change >= 0 ? (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                          </svg>
-                        )}
-                        {Math.abs(index.change).toFixed(2)}
-                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
