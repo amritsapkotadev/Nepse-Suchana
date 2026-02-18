@@ -38,15 +38,15 @@ export default function StockDetailModal({ stock, onClose }: StockDetailModalPro
       onClick={onClose}
     >
       <div
-        className="w-full max-w-3xl rounded-2xl bg-white dark:bg-slate-900 shadow-2xl overflow-hidden"
+        className="w-full max-w-3xl rounded-2xl bg-white shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* HEADER */}
         <div
           className={`flex items-center justify-between p-6 border-b ${
             isPositive
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-              : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+              ? 'bg-green-50 border-green-200'
+              : 'bg-red-50 border-red-200'
           }`}
         >
           <div className="flex items-center gap-4">
@@ -54,14 +54,14 @@ export default function StockDetailModal({ stock, onClose }: StockDetailModalPro
               <img
                 src={`https://sharepulse.qzz.io/${stock.iconUrl}`}
                 alt={stock.symbol}
-                className="w-12 h-12 rounded-full border border-slate-300 dark:border-slate-700"
+                className="w-12 h-12 rounded-full border border-slate-300"
               />
             )}
             <div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-2xl font-bold text-slate-900">
                 {stock.symbol}
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-sm text-slate-600">
                 {stock.name}
               </p>
               {stock.sector && (
@@ -74,17 +74,17 @@ export default function StockDetailModal({ stock, onClose }: StockDetailModalPro
 
           <button
             onClick={onClose}
-            className="text-2xl font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            className="text-2xl font-bold text-slate-400 hover:text-slate-700:text-slate-200"
           >
             ×
           </button>
         </div>
 
         {/* PRICE SECTION */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between p-6 border-b border-slate-200">
           <div>
             <p className="text-sm text-slate-500 mb-1">Current Price</p>
-            <p className="text-4xl font-bold text-slate-900 dark:text-white">
+            <p className="text-4xl font-bold text-slate-900">
               Rs {formatNumber(stock.lastTradedPrice)}
             </p>
           </div>
@@ -92,8 +92,8 @@ export default function StockDetailModal({ stock, onClose }: StockDetailModalPro
           <div
             className={`text-right text-xl font-semibold ${
               isPositive
-                ? 'text-green-600 dark:text-green-400'
-                : 'text-red-600 dark:text-red-400'
+                ? 'text-green-600'
+                : 'text-red-600'
             }`}
           >
             {isPositive ? '+' : ''}
@@ -125,14 +125,14 @@ export default function StockDetailModal({ stock, onClose }: StockDetailModalPro
         </div>
 
         {/* FOOTER */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50">
           <p className="text-xs text-slate-500">
             Last updated: {new Date().toLocaleTimeString()}
           </p>
 
           <button
             onClick={onClose}
-            className="rounded-lg bg-slate-900 dark:bg-slate-700 px-4 py-2 text-white text-sm hover:opacity-90 transition"
+            className="rounded-lg bg-slate-900 px-4 py-2 text-white text-sm hover:opacity-90 transition"
           >
             Close
           </button>
@@ -156,9 +156,9 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+      <p className="mt-1 text-lg font-bold text-slate-900">
         {value}
       </p>
       {sub && (

@@ -199,25 +199,25 @@ export default function Watchlist() {
   }).length;
 
   const getPriceChangeColor = (change: number) => {
-    if (change > 0) return 'text-emerald-600 dark:text-emerald-400';
-    if (change < 0) return 'text-red-600 dark:text-red-400';
-    return 'text-slate-500 dark:text-slate-400';
+    if (change > 0) return 'text-emerald-600';
+    if (change < 0) return 'text-red-600';
+    return 'text-slate-500';
   };
 
   const getPriceChangeBg = (change: number) => {
-    if (change > 0) return 'bg-emerald-50 dark:bg-emerald-900/20';
-    if (change < 0) return 'bg-red-50 dark:bg-red-900/20';
-    return 'bg-slate-50 dark:bg-slate-800';
+    if (change > 0) return 'bg-emerald-50';
+    if (change < 0) return 'bg-red-50';
+    return 'bg-slate-50';
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-900 dark:to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="mb-6">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Stock Watchlist
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
+          <p className="text-sm text-slate-600">
             Track and manage your favorite stocks
           </p>
         </div>
@@ -235,33 +235,33 @@ export default function Watchlist() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow border border-slate-200 dark:border-slate-700">
+          <div className="bg-white rounded-xl p-4 shadow border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Total Stocks</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{totalStocks}</p>
+                <p className="text-sm text-slate-600">Total Stocks</p>
+                <p className="text-2xl font-bold text-slate-900">{totalStocks}</p>
               </div>
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <FaChartLine className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 rounded-lg bg-blue-100">
+                <FaChartLine className="w-6 h-6 text-blue-600" />
               </div>
             </div>
           </div>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow border border-slate-200 dark:border-slate-700">
+          <div className="bg-white rounded-xl p-4 shadow border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Targets Reached</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{targetsReached}</p>
+                <p className="text-sm text-slate-600">Targets Reached</p>
+                <p className="text-2xl font-bold text-slate-900">{targetsReached}</p>
               </div>
-              <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/30">
-                <FaBullseye className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              <div className="p-2 rounded-lg bg-emerald-100">
+                <FaBullseye className="w-6 h-6 text-emerald-600" />
               </div>
             </div>
           </div>
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow border border-slate-200 dark:border-slate-700">
+          <div className="bg-white rounded-xl p-4 shadow border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Target Progress</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">
+                <p className="text-sm text-slate-600">Avg. Target Progress</p>
+                <p className="text-2xl font-bold text-slate-900">
                   {watchlist.length > 0 
                     ? `${Math.round(watchlist.filter(stock => {
                         const live = liveMap[stock.symbol];
@@ -271,8 +271,8 @@ export default function Watchlist() {
                     : '0%'}
                 </p>
               </div>
-              <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
-                <FaArrowUp className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+              <div className="p-2 rounded-lg bg-amber-100">
+                <FaArrowUp className="w-6 h-6 text-amber-600" />
               </div>
             </div>
           </div>
@@ -287,12 +287,12 @@ export default function Watchlist() {
               placeholder="Search stocks by symbol, name, or notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600:text-slate-300"
               >
                 <FaTimes className="w-5 h-5" />
               </button>
@@ -301,7 +301,7 @@ export default function Watchlist() {
           <div className="flex gap-2">
             <div className="relative">
               <button
-                className="px-4 py-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300"
+                className="px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-700"
               >
                 <FaFilter className="w-5 h-5" />
               </button>
@@ -315,7 +315,7 @@ export default function Watchlist() {
             <button
               key={field}
               onClick={() => handleSort(field)}
-              className={`px-4 py-2 rounded-lg transition-colors ${sortField === field ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+              className={`px-4 py-2 rounded-lg transition-colors ${sortField === field ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-50:bg-slate-700'}`}
             >
               <div className="flex items-center gap-2 capitalize">
                 {field}
@@ -329,9 +329,9 @@ export default function Watchlist() {
 
         {/* Add/Edit Stock Form */}
         {(showAddForm || editingStock) && (
-          <div className="mb-8 bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6">
+          <div className="mb-8 bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-2xl border border-slate-200 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+              <h2 className="text-xl font-bold text-slate-900">
                 {editingStock ? 'Edit Stock' : 'Add New Stock'}
               </h2>
               <button
@@ -340,15 +340,15 @@ export default function Watchlist() {
                   setEditingStock(null);
                   setFormData({ symbol: '', companyName: '', targetPrice: '', notes: '' });
                 }}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                className="p-2 hover:bg-slate-100:bg-slate-700 rounded-lg transition-colors"
               >
-                <FaTimes className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+                <FaTimes className="w-5 h-5 text-slate-500" />
               </button>
             </div>
             <form onSubmit={editingStock ? handleUpdateStock : handleAddStock} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="relative" ref={suggestionsRef}>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Stock Symbol *
                   </label>
                   <input
@@ -380,18 +380,18 @@ export default function Watchlist() {
                         );
                       }
                     }}
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     placeholder="Type symbol or company name..."
                     required
                     autoComplete="off"
                   />
                   {suggestions.length > 0 && (
-                    <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-slate-300 rounded-xl shadow-2xl max-h-80 overflow-y-auto">
                       {suggestions.map(stock => (
                         <button
                           key={stock.symbol}
                           type="button"
-                          className="w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-slate-800 cursor-pointer border-b last:border-b-0 border-slate-100 dark:border-slate-800"
+                          className="w-full text-left px-4 py-3 hover:bg-blue-50:bg-slate-800 cursor-pointer border-b last:border-b-0 border-slate-100"
                           onClick={() => {
                             setFormData({ 
                               ...formData, 
@@ -401,8 +401,8 @@ export default function Watchlist() {
                             setSuggestions([]);
                           }}
                         >
-                          <div className="font-bold text-blue-600 dark:text-blue-400">{stock.symbol}</div>
-                          <div className="text-sm text-slate-600 dark:text-slate-400 truncate">
+                          <div className="font-bold text-blue-600">{stock.symbol}</div>
+                          <div className="text-sm text-slate-600 truncate">
                             {stock.securityName}
                           </div>
                           {liveMap[stock.symbol] && (
@@ -419,20 +419,20 @@ export default function Watchlist() {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Company Name *
                   </label>
                   <input
                     type="text"
                     value={formData.companyName}
                     onChange={e => setFormData({ ...formData, companyName: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     placeholder="Company name"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Target Price (Optional)
                   </label>
                   <input
@@ -440,19 +440,19 @@ export default function Watchlist() {
                     step="0.01"
                     value={formData.targetPrice}
                     onChange={(e) => setFormData({ ...formData, targetPrice: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     placeholder="Enter target price"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Notes (Optional)
                   </label>
                   <input
                     type="text"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                     placeholder="Add notes or reasoning..."
                   />
                 </div>
@@ -479,7 +479,7 @@ export default function Watchlist() {
                     setEditingStock(null);
                     setFormData({ symbol: '', companyName: '', targetPrice: '', notes: '' });
                   }}
-                  className="px-6 py-3 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-semibold transition-all"
+                  className="px-6 py-3 bg-slate-200 hover:bg-slate-300:bg-slate-600 text-slate-700 rounded-xl font-semibold transition-all"
                 >
                   Cancel
                 </button>
@@ -491,15 +491,15 @@ export default function Watchlist() {
         {/* Watchlist Grid */}
         {filteredAndSortedStocks.length === 0 ? (
           <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 mb-6">
-              <svg className="w-12 h-12 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 mb-6">
+              <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-3">
+            <h3 className="text-2xl font-bold text-slate-900 mb-3">
               {searchQuery ? 'No matching stocks found' : 'Your watchlist is empty'}
             </h3>
-            <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto">
+            <p className="text-slate-600 mb-8 max-w-md mx-auto">
               {searchQuery ? 'Try adjusting your search or filters' : 'Start building your portfolio by adding stocks to track'}
             </p>
             {!searchQuery && (
@@ -524,7 +524,7 @@ export default function Watchlist() {
               return (
                 <div
                   key={stock.id}
-                  className="bg-gradient-to-br from-white to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700 transition-all hover:shadow-xl group"
+                  className="bg-gradient-to-br from-white to-slate-50 rounded-2xl shadow-lg border border-slate-200 transition-all hover:shadow-xl group"
                 >
                   <div className="p-6">
                     {/* Header */}
@@ -537,16 +537,16 @@ export default function Watchlist() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            <h3 className="text-xl font-bold text-slate-900 group-hover:text-blue-600:text-blue-400 transition-colors">
                               {stock.symbol}
                             </h3>
                             {isTargetReached && (
-                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+                              <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
                                 Target Reached
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 truncate max-w-xs">
+                          <p className="text-sm text-slate-600 truncate max-w-xs">
                             {stock.companyName}
                           </p>
                         </div>
@@ -555,14 +555,14 @@ export default function Watchlist() {
                         <StockChartModal symbol={stock.symbol} companyName={stock.companyName} />
                         <button
                           onClick={() => handleEditStock(stock.id)}
-                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600:text-blue-400 hover:bg-slate-100:bg-slate-700 transition-colors"
                           title="Edit"
                         >
                           <FaEdit className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleRemoveStock(stock.id)}
-                          className="p-2 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                          className="p-2 rounded-lg text-slate-400 hover:text-red-600:text-red-400 hover:bg-slate-100:bg-slate-700 transition-colors"
                           title="Remove"
                         >
                           <FaTrash className="w-5 h-5" />
@@ -573,8 +573,8 @@ export default function Watchlist() {
                     {/* Price Info */}
                     <div className="grid grid-cols-2 gap-4 mb-6">
                       <div className={`p-4 rounded-xl ${getPriceChangeBg(change)}`}>
-                        <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Current Price</div>
-                        <div className="text-2xl font-bold text-slate-900 dark:text-white">
+                        <div className="text-sm text-slate-600 mb-1">Current Price</div>
+                        <div className="text-2xl font-bold text-slate-900">
                           {ltp ? `Rs. ${ltp.toLocaleString()}` : '--'}
                         </div>
                         {change !== 0 && (
@@ -587,14 +587,14 @@ export default function Watchlist() {
                         )}
                       </div>
                       {stock.targetPrice && (
-                        <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-                          <div className="text-sm text-slate-600 dark:text-slate-400 mb-1">Target Price</div>
-                          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                        <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50">
+                          <div className="text-sm text-slate-600 mb-1">Target Price</div>
+                          <div className="text-2xl font-bold text-blue-600">
                             Rs. {stock.targetPrice.toLocaleString()}
                           </div>
                           {targetDiff !== null && ltp && (
                             <div className="text-sm font-semibold mt-2">
-                              <span className={targetDiff >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}>
+                              <span className={targetDiff >= 0 ? 'text-emerald-600' : 'text-slate-600'}>
                                 {targetDiff >= 0 ? '+' : ''}{targetDiff.toFixed(2)}% from target
                               </span>
                             </div>
@@ -606,25 +606,25 @@ export default function Watchlist() {
                     {/* Notes */}
                     {stock.notes && (
                       <div className="mb-6">
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 mb-2">
+                        <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
                           <FaRegStickyNote /> Notes
                         </div>
-                        <p className="text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3">
+                        <p className="text-slate-700 bg-slate-50 rounded-lg p-3">
                           {stock.notes}
                         </p>
                       </div>
                     )}
 
                     {/* Footer */}
-                    <div className="pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                    <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
+                      <div className="text-xs text-slate-500">
                         Added {new Date(stock.addedAt).toLocaleDateString('en-US', { 
                           year: 'numeric', 
                           month: 'short', 
                           day: 'numeric' 
                         })}
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                      <div className="text-xs text-slate-500">
                         {live.updatedAt ? `Updated: ${new Date(live.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '--'}
                       </div>
                     </div>

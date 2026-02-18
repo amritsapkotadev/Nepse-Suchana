@@ -18,7 +18,7 @@ export default function StockChartModal({ symbol, companyName }: StockChartModal
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="p-2 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+        className="p-2 rounded-lg text-slate-400 hover:text-blue-600:text-blue-400 hover:bg-slate-100:bg-slate-700 transition-colors"
         title="View Chart"
       >
         <FaChartLine className="w-5 h-5" />
@@ -26,18 +26,18 @@ export default function StockChartModal({ symbol, companyName }: StockChartModal
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="relative bg-white dark:bg-slate-900 rounded-2xl w-full max-w-6xl h-[80vh] overflow-hidden">
+          <div className="relative bg-white rounded-2xl w-full max-w-6xl h-[80vh] overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                <h2 className="text-2xl font-bold text-slate-900">
                   {symbol} - {companyName}
                 </h2>
-                <p className="text-slate-600 dark:text-slate-400">Live Trading Chart</p>
+                <p className="text-slate-600">Live Trading Chart</p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                className="p-2 hover:bg-slate-100:bg-slate-800 rounded-lg transition-colors"
               >
                 <FaTimes className="w-6 h-6" />
               </button>

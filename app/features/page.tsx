@@ -45,8 +45,8 @@ const features = [
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <nav className="sticky top-0 z-50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-700/50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
@@ -60,7 +60,7 @@ export default function FeaturesPage() {
             <div className="flex items-center space-x-4">
               <Link
                 href="/portfolio"
-                className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-blue-600:text-blue-400 transition-colors"
               >
                 Portfolio
               </Link>
@@ -77,10 +77,10 @@ export default function FeaturesPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 dark:text-white mb-4">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4">
             Powerful Trading Features
           </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
             Everything you need to navigate the Nepal Stock Exchange with confidence and speed.
           </p>
         </div>
@@ -89,15 +89,15 @@ export default function FeaturesPage() {
           {features.map((feature, i) => (
             <div
               key={i}
-              className="group bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+              className="group bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
             >
-              <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-700 w-fit rounded-xl group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 transition-colors">
+              <div className="mb-4 p-3 bg-slate-50 w-fit rounded-xl group-hover:bg-blue-50:bg-blue-900/30 transition-colors">
                 {feature.icon}
               </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
                 {feature.title}
               </h3>
-              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p className="text-slate-600 leading-relaxed">
                 {feature.desc}
               </p>
             </div>

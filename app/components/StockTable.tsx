@@ -19,60 +19,60 @@ export default function StockTable({ stocks, title, showName = true, showTurnove
 
   return (
     <>
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md border border-slate-200 dark:border-slate-700">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-          <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{title}</h2>
+      <div className="bg-white rounded-lg shadow-md border border-slate-200">
+        <div className="px-6 py-4 border-b border-slate-200">
+          <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-slate-50 dark:bg-slate-900">
+            <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Symbol
                 </th>
                 {showName && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Name
                   </th>
                 )}
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   LTP
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                   Change
                 </th>
                 {showTurnover && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                     Turnover
                   </th>
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+            <tbody className="divide-y divide-slate-200">
               {stocks.length > 0 ? (
                 stocks.map((stock) => (
                   <tr
                     key={stock.symbol}
                     onClick={() => setSelectedStock(stock)}
-                    className="hover:bg-slate-50 dark:hover:bg-slate-750 cursor-pointer transition-colors"
+                    className="hover:bg-slate-50:bg-slate-700 cursor-pointer transition-colors"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-white">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
                       {stock.symbol}
                     </td>
                     {showName && (
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                      <td className="px-6 py-4 text-sm text-slate-600">
                         {stock.name}
                       </td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-white">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
                       Rs {stock.lastTradedPrice.toLocaleString()}
                     </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${stock.change >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'} font-semibold`}>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm ${stock.change >= 0 ? 'text-green-600' : 'text-red-600'} font-semibold`}>
                       {stock.change >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
                     </td>
                     {showTurnover && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                         Rs {formatCrore(stock.turnover)} Cr
                       </td>
                     )}
@@ -80,7 +80,7 @@ export default function StockTable({ stocks, title, showName = true, showTurnove
                 ))
               ) : (
                 <tr>
-                  <td colSpan={showName && showTurnover ? 5 : showName || showTurnover ? 4 : 3} className="px-6 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                  <td colSpan={showName && showTurnover ? 5 : showName || showTurnover ? 4 : 3} className="px-6 py-4 text-center text-sm text-slate-500">
                     No stock data available
                   </td>
                 </tr>

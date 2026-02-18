@@ -157,26 +157,26 @@ export default function DemoTrading() {
   const trades = account?.transactions || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-8">
-      <h1 className="text-3xl font-bold mb-6 text-slate-900 dark:text-white">Demo Trading</h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-8">
+      <h1 className="text-3xl font-bold mb-6 text-slate-900">Demo Trading</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-100 dark:border-slate-700">
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-600 dark:text-slate-400">Balance</span>
+            <span className="text-slate-600">Balance</span>
             <FaMoneyBillWave className="text-green-500" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">Rs. {account?.current_balance?.toLocaleString() || '0'}</p>
+          <p className="text-2xl font-bold text-slate-900">Rs. {account?.current_balance?.toLocaleString() || '0'}</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-100 dark:border-slate-700">
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-600 dark:text-slate-400">Total Trades</span>
+            <span className="text-slate-600">Total Trades</span>
             <FaHashtag className="text-blue-500" />
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white">{trades.length}</p>
+          <p className="text-2xl font-bold text-slate-900">{trades.length}</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-lg border border-slate-100 dark:border-slate-700">
+        <div className="bg-white rounded-2xl p-6 shadow-lg border border-slate-100">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-600 dark:text-slate-400">Profit/Loss</span>
+            <span className="text-slate-600">Profit/Loss</span>
             <FaChartLine className={profitLoss >= 0 ? "text-green-500" : "text-red-500"} />
           </div>
           <p className={`text-2xl font-bold ${profitLoss >= 0 ? "text-green-600" : "text-red-600"}`}>
@@ -187,8 +187,8 @@ export default function DemoTrading() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1">
-          <form onSubmit={handleAdd} className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 p-6">
-            <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white">Buy Stock</h2>
+          <form onSubmit={handleAdd} className="bg-white rounded-2xl shadow-lg border border-slate-100 p-6">
+            <h2 className="text-xl font-semibold mb-4 text-slate-900">Buy Stock</h2>
             <div className="space-y-4">
               <div className="relative">
                 <label className="block text-sm font-medium mb-2">Symbol *</label>
@@ -203,15 +203,15 @@ export default function DemoTrading() {
                     setShowSuggestions(e.target.value.length > 0);
                   }}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl"
                   placeholder="e.g. NABIL"
                 />
                 {showSuggestions && suggestions.length > 0 && (
-                  <div className="absolute z-10 w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl mt-1 shadow-lg">
+                  <div className="absolute z-10 w-full bg-white border border-slate-200 rounded-xl mt-1 shadow-lg">
                     {suggestions.map(s => (
                       <div
                         key={s.symbol}
-                        className="px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
+                        className="px-4 py-2 hover:bg-slate-100:bg-slate-700 cursor-pointer"
                         onClick={() => {
                           setForm(prev => ({ ...prev, symbol: s.symbol, companyName: s.securityName }));
                           setShowSuggestions(false);
@@ -226,15 +226,15 @@ export default function DemoTrading() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Company</label>
-                <input name="companyName" type="text" value={form.companyName} onChange={e => setForm(prev => ({ ...prev, companyName: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                <input name="companyName" type="text" value={form.companyName} onChange={e => setForm(prev => ({ ...prev, companyName: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Quantity *</label>
-                <input name="quantity" type="number" min="1" value={form.quantity} onChange={e => setForm(prev => ({ ...prev, quantity: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                <input name="quantity" type="number" min="1" value={form.quantity} onChange={e => setForm(prev => ({ ...prev, quantity: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Buy Price *</label>
-                <input name="buyPrice" type="number" min="1" value={form.buyPrice} onChange={e => setForm(prev => ({ ...prev, buyPrice: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl" />
+                <input name="buyPrice" type="number" min="1" value={form.buyPrice} onChange={e => setForm(prev => ({ ...prev, buyPrice: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl" />
               </div>
             </div>
             <button type="submit" className="w-full mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:shadow-lg transition-all flex items-center justify-center">
@@ -244,22 +244,22 @@ export default function DemoTrading() {
         </div>
 
         <div className="lg:col-span-2">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-700 p-6">
-            <h2 className="text-xl font-semibold mb-4 text-slate-900 dark:text-white">Trade History</h2>
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-6">
+            <h2 className="text-xl font-semibold mb-4 text-slate-900">Trade History</h2>
             {trades.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 dark:text-slate-400">No trades yet. Buy a stock to start demo trading.</div>
+              <div className="p-8 text-center text-slate-500">No trades yet. Buy a stock to start demo trading.</div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-slate-50 dark:bg-slate-900/50">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Symbol</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Side</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Qty</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Price</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Current</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">P/L</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Symbol</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Side</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Qty</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Price</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Current</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase">P/L</th>
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
@@ -269,16 +269,16 @@ export default function DemoTrading() {
                       const currentPrice = stock?.lastTradedPrice || stock?.closingPrice || stock?.ltp || 0;
                       const pl = (currentPrice - trade.price) * trade.quantity;
                       return (
-                        <tr key={trade.id} className="border-t border-slate-100 dark:border-slate-700">
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{new Date(trade.created_at).toLocaleDateString()}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-white">{trade.stock_symbol}</td>
+                        <tr key={trade.id} className="border-t border-slate-100">
+                          <td className="px-4 py-3 text-sm text-slate-600">{new Date(trade.created_at).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-sm font-medium text-slate-900">{trade.stock_symbol}</td>
                           <td className="px-4 py-3 text-sm"><span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs">{trade.side}</span></td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{trade.quantity}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">Rs. {trade.price}</td>
-                          <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">Rs. {currentPrice}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">{trade.quantity}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">Rs. {trade.price}</td>
+                          <td className="px-4 py-3 text-sm text-slate-600">Rs. {currentPrice}</td>
                           <td className={`px-4 py-3 text-sm font-medium ${pl >= 0 ? 'text-green-600' : 'text-red-600'}`}>{pl >= 0 ? '+' : ''}Rs. {pl.toLocaleString()}</td>
                           <td className="px-4 py-3">
-                            <button onClick={() => handleDelete(trade.id)} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                            <button onClick={() => handleDelete(trade.id)} className="p-2 text-red-500 hover:bg-red-50:bg-red-900/20 rounded-lg">
                               <FaTrash className="w-4 h-4" />
                             </button>
                           </td>
