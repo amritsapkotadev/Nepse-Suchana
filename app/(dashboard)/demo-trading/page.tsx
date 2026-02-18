@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { FaChartLine, FaMoneyBillWave, FaHashtag, FaPlusCircle, FaTrash } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 interface Trade {
   id: string;
@@ -19,8 +20,6 @@ export default function DemoTrading() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [form, setForm] = useState({ symbol: "", companyName: "", quantity: "", buyPrice: "" });
   const [profitLoss, setProfitLoss] = useState(0);
-  const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
   type StockData = { symbol: string; securityName: string; lastTradedPrice?: number; closingPrice?: number; ltp?: number };
   const [suggestions, setSuggestions] = useState<StockData[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -60,19 +59,17 @@ export default function DemoTrading() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [trades]);
 
-  // Add tradez
+  // Add trade
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
     const { symbol, companyName, quantity, buyPrice } = form;
     if (!symbol || !companyName || !quantity || !buyPrice) {
-      setError("All fields are required.");
+      toast.error("All fields are required.");
       return;
     }
     const stock = allStocks.find(s => s.symbol === symbol);
     if (!stock) {
-      setError("Invalid stock symbol.");
+      toast.error("Invalid stock symbol.");
       return;
     }
     const newTrade: Trade = {
@@ -86,7 +83,7 @@ export default function DemoTrading() {
       date: new Date(),
     };
     setTrades(prev => [...prev, newTrade]);
-    setSuccess("Trade added!");
+    toast.success("Trade added");
     setForm({ symbol: "", companyName: "", quantity: "", buyPrice: "" });
     setTimeout(calculatePL, 100);
   };
@@ -94,6 +91,7 @@ export default function DemoTrading() {
   // Delete trade
   const handleDelete = (id: string) => {
     setTrades(prev => prev.filter(t => t.id !== id));
+    toast.success("Trade removed");
     setTimeout(calculatePL, 100);
   };
 
@@ -192,8 +190,6 @@ export default function DemoTrading() {
             <input name="buyPrice" type="number" min="1" value={form.buyPrice} onChange={e => setForm(prev => ({ ...prev, buyPrice: e.target.value }))} className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl" />
           </div>
         </div>
-        {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-xl">{error}</div>}
-        {success && <div className="mb-4 p-3 bg-emerald-100 text-emerald-700 rounded-xl">{success}</div>}
         <button type="submit" className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-xl hover:shadow-lg transition-all flex items-center">
           <FaPlusCircle className="mr-2" /> Buy
         </button>
