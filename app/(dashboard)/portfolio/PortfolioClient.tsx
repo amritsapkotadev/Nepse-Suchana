@@ -97,10 +97,10 @@ export default function MultiPortfolioTracker() {
   
   const inputRef = useRef<HTMLInputElement>(null);
   const portfolioMenuRef = useRef<HTMLDivElement>(null);
+  const allStocksRef = useRef<Stock[]>([]);
 
   // Cache for fetched data
   const portfoliosCache = useRef<Portfolio[] | null>(null);
-  const stocksCache = useRef<Stock[] | null>(null);
   const isFetching = useRef(false);
 
   // Fetch portfolios from backend
@@ -172,14 +172,13 @@ export default function MultiPortfolioTracker() {
   }, []);
 
   // Fetch all stocks for suggestions
-  const fetchAllStocks = useCallback(async (force = false) => {
-    if (!force && stocksCache.current) {
-      setAllStocks(stocksCache.current);
-      return;
-    }
-    
+  const fetchAllStocks = useCallback(async () => {
     try {
-      const data = await safeFetch<any>('/api/stocks');
+      console.log('Fetching stocks...');
+      const response = await fetch('/api/stocks');
+      const data = await response.json();
+      console.log('API response:', data);
+      
       let stocks: Stock[] = [];
       if (Array.isArray(data)) {
         stocks = data;
@@ -187,8 +186,18 @@ export default function MultiPortfolioTracker() {
         stocks = data.stocks;
       } else if (data && Array.isArray(data.data)) {
         stocks = data.data;
+      } else if (data && Array.isArray(data.liveCompanyData)) {
+        stocks = data.liveCompanyData.map((c: any) => ({
+          symbol: c.symbol,
+          name: c.securityName,
+          currentPrice: c.lastTradedPrice,
+          change: c.change,
+          changePercent: c.percentageChange
+        }));
       }
-      stocksCache.current = stocks;
+      
+      console.log('Processed stocks:', stocks.length);
+      allStocksRef.current = stocks;
       setAllStocks(stocks);
     } catch (err) {
       console.error('Failed to fetch stocks:', err);
@@ -208,8 +217,8 @@ export default function MultiPortfolioTracker() {
     } else {
       fetchPortfolios(true);
     }
-    if (!stocksCache.current) {
-      fetchAllStocks(true);
+    if (allStocks.length === 0) {
+      fetchAllStocks();
     }
   }, []);
 
@@ -392,18 +401,17 @@ export default function MultiPortfolioTracker() {
   // Search stock suggestions
   const debouncedSearch = useCallback(
     debounce((query: string) => {
-      if (!query.trim()) {
-        setStockSuggestions([]);
-        return;
-      }
-      const lowerQuery = query.toLowerCase();
-      const filtered = allStocks.filter(stock =>
-        stock.symbol.toLowerCase().includes(lowerQuery) ||
+      console.log('debouncedSearch called, allStocksRef length:', allStocksRef.current.length);
+      const stocks = allStocksRef.current;
+      const lowerQuery = query.toLowerCase().trim();
+      const filtered = (stocks || []).filter(stock =>
+        !lowerQuery || stock.symbol.toLowerCase().includes(lowerQuery) ||
         stock.name.toLowerCase().includes(lowerQuery)
       ).slice(0, 10);
+      console.log('Filtered stocks:', filtered.length);
       setStockSuggestions(filtered);
-    }, 200),
-    [allStocks]
+    }, 150),
+    []
   );
 
   const handleStockSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -715,7 +723,10 @@ export default function MultiPortfolioTracker() {
           
           <div className="flex gap-3">
             <button
-              onClick={() => setShowStockModal(true)}
+              onClick={() => {
+                if (allStocks.length === 0) fetchAllStocks();
+                setShowStockModal(true);
+              }}
               className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center shadow-md hover:shadow-xl"
             >
               <FaPlusCircle className="mr-2" />
@@ -1389,7 +1400,10 @@ export default function MultiPortfolioTracker() {
                         type="text"
                         value={form.symbol}
                         onChange={handleStockSearch}
-                        onFocus={() => setShowSuggestions(true)}
+                        onFocus={() => {
+                          setShowSuggestions(true);
+                          debouncedSearch(form.symbol);
+                        }}
                         className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         placeholder="Search symbol..."
                         required
