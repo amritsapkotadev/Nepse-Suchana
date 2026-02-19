@@ -119,7 +119,6 @@ export function Navbar() {
 
   const isStaticPage = pathname === '/disclaimer' || pathname === '/privacy-policy' || pathname === '/terms' || pathname === '/features';
 
-  if (isAuthPage) return null;
   if (isAppLoading && !isStaticPage) return null;
 
   return (

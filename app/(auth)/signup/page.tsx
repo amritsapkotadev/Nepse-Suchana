@@ -5,9 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api-client';
-import { BarChart3 } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -23,6 +24,7 @@ type SignupForm = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
   
   const {
     register,
@@ -57,9 +59,6 @@ export default function SignupPage() {
 
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 mb-4">
-            <BarChart3 className="w-8 h-8 text-white" />
-          </div>
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
             Create Account
           </h1>
@@ -115,13 +114,22 @@ export default function SignupPage() {
               >
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                {...register('password')}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500:ring-blue-400 focus:border-transparent transition"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  {...register('password')}
+                  className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500:ring-blue-400 focus:border-transparent transition"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
               {errors.password && (
                 <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
               )}
@@ -134,13 +142,22 @@ export default function SignupPage() {
               >
                 Confirm Password
               </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                {...register('confirmPassword')}
-                className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500:ring-blue-400 focus:border-transparent transition"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type={showPassword ? 'text' : 'password'}
+                  {...register('confirmPassword')}
+                  className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl bg-white text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500:ring-blue-400 focus:border-transparent transition"
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
               {errors.confirmPassword && (
                 <p className="mt-1 text-sm text-red-600">{errors.confirmPassword.message}</p>
               )}

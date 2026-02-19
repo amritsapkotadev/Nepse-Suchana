@@ -8,11 +8,10 @@ import { BarChart3 } from 'lucide-react';
 export function Footer() {
   const pathname = usePathname();
   const { isAppLoading } = useAppLoading();
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
   const isStaticPage = pathname === '/disclaimer' || pathname === '/privacy-policy' || pathname === '/terms' || pathname === '/features';
   const isQuickLinksPage = pathname === '/features' || pathname === '/disclaimer' || pathname === '/privacy-policy' || pathname === '/terms';
 
-  if (isAuthPage || (isAppLoading && !isStaticPage)) return null;
+  if (isAppLoading && !isStaticPage) return null;
 
   if (isQuickLinksPage) {
     return (
