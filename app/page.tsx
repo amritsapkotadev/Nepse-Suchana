@@ -662,7 +662,7 @@ export default function Home() {
                   <h4 className="font-bold text-slate-800 mb-4">Quick Links</h4>
                   <ul className="space-y-3">
                     <li><a href="/features" className="text-slate-600 hover:text-blue-600 transition-colors">Features</a></li>
-                    <li><a href="/privacy" className="text-slate-600 hover:text-blue-600 transition-colors">Privacy Policy</a></li>
+                    <li><a href="/privacy-policy" className="text-slate-600 hover:text-blue-600 transition-colors">Privacy Policy</a></li>
                     <li><a href="/terms" className="text-slate-600 hover:text-blue-600 transition-colors">Terms of Service</a></li>
                     <li><a href="/disclaimer" className="text-slate-600 hover:text-blue-600 transition-colors">Disclaimer</a></li>
                   </ul>
