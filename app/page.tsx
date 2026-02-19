@@ -219,17 +219,11 @@ export default function Home() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative">
-            <div className="w-24 h-24 border-4 border-blue-100 rounded-full animate-spin border-t-blue-600"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full animate-pulse"></div>
-            </div>
+        <div className="flex flex-col items-center">
+          <div className="w-24 h-24 rounded-full border-2 border-blue-300 flex items-center justify-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full animate-pulse shadow-lg shadow-blue-500/30"></div>
           </div>
-          <h1 className="mt-6 text-2xl font-bold text-slate-800 mb-2 animate-pulse">
-            Loading Market Dashboard
-          </h1>
-          <p className="text-slate-600">Fetching real-time NEPSE data...</p>
+          <h1 className="mt-6 text-xl font-semibold text-slate-800">Loading Market Data</h1>
         </div>
       </div>
     );
