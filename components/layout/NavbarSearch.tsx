@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { type Stock } from './Stockdetailmodal';
+import { type Stock } from '@/app/components/Stockdetailmodal';
 
 interface NavbarSearchProps {
   allStocks: Stock[];
