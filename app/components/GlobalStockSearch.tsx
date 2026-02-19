@@ -112,7 +112,7 @@ export default function GlobalStockSearch({ allStocks }: GlobalStockSearchProps)
                           </div>
                           <div className="text-right ml-4">
                             <p className="text-sm font-semibold text-slate-900">
-                              Rs {stock.lastTradedPrice.toLocaleString()}
+                              Rs {stock.lastTradedPrice.toLocaleString('en-IN')}
                             </p>
                             <p className="text-xs text-slate-500">
                               Turnover: Rs {formatCrore(stock.turnover)} Cr

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { 
   FaTrash, 
   FaPlus, 
@@ -53,6 +54,27 @@ export default function Watchlist() {
   const symbolInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
+  // Fetch watchlist from database
+  const fetchWatchlist = useCallback(async () => {
+    try {
+      const res = await fetch('/api/watchlist');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.data) {
+          const items = data.data.map((item: any) => ({
+            id: item.id.toString(),
+            symbol: item.stock_symbol,
+            companyName: '',
+            addedAt: new Date(item.created_at)
+          }));
+          setWatchlist(items);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching watchlist:', err);
+    }
+  }, []);
+
   // Fetch all stocks on mount
   const fetchStocks = useCallback(async () => {
     try {
@@ -74,7 +96,8 @@ export default function Watchlist() {
 
   useEffect(() => {
     fetchStocks();
-  }, [fetchStocks]);
+    fetchWatchlist();
+  }, [fetchStocks, fetchWatchlist]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -87,26 +110,61 @@ export default function Watchlist() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleAddStock = (e: React.FormEvent) => {
+  const handleAddStock = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newStock: WatchlistStock = {
-      id: Date.now().toString(),
-      symbol: formData.symbol.toUpperCase(),
-      companyName: formData.companyName,
-      targetPrice: formData.targetPrice ? parseFloat(formData.targetPrice) : undefined,
-      notes: formData.notes || undefined,
-      addedAt: new Date()
-    };
+    try {
+      const res = await fetch('/api/watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock_symbol: formData.symbol.toUpperCase() })
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const newStock: WatchlistStock = {
+          id: data.data?.id?.toString() || Date.now().toString(),
+          symbol: formData.symbol.toUpperCase(),
+          companyName: formData.companyName,
+          targetPrice: formData.targetPrice ? parseFloat(formData.targetPrice) : undefined,
+          notes: formData.notes || undefined,
+          addedAt: new Date()
+        };
 
-    setWatchlist([newStock, ...watchlist]);
-    setFormData({ symbol: '', companyName: '', targetPrice: '', notes: '' });
-    setShowAddForm(false);
-    setShowSuggestions(false);
+        setWatchlist([newStock, ...watchlist]);
+        setFormData({ symbol: '', companyName: '', targetPrice: '', notes: '' });
+        setShowAddForm(false);
+        setShowSuggestions(false);
+        toast.success('Added to watchlist');
+      } else {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to add to watchlist');
+      }
+    } catch (err) {
+      toast.error('Failed to add to watchlist');
+    }
   };
 
-  const handleRemoveStock = (id: string) => {
-    setWatchlist(watchlist.filter(stock => stock.id !== id));
+  const handleRemoveStock = async (id: string) => {
+    const stock = watchlist.find(s => s.id === id);
+    if (!stock) return;
+    
+    try {
+      const res = await fetch('/api/watchlist/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock_symbol: stock.symbol })
+      });
+      
+      if (res.ok) {
+        setWatchlist(watchlist.filter(s => s.id !== id));
+        toast.success('Removed from watchlist');
+      } else {
+        toast.error('Failed to remove from watchlist');
+      }
+    } catch (err) {
+      toast.error('Failed to remove from watchlist');
+    }
   };
 
   const handleEditStock = (id: string) => {
@@ -572,7 +630,7 @@ export default function Watchlist() {
                       <div className={`p-4 rounded-xl ${getPriceChangeBg(change)}`}>
                         <div className="text-sm text-slate-600 mb-1">Current Price</div>
                         <div className="text-2xl font-bold text-slate-900">
-                          {ltp ? `Rs. ${ltp.toLocaleString()}` : '--'}
+                          {ltp ? `Rs. ${ltp.toLocaleString('en-IN')}` : '--'}
                         </div>
                         {change !== 0 && (
                           <div className="flex items-center gap-2 mt-2">
@@ -587,7 +645,7 @@ export default function Watchlist() {
                         <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50">
                           <div className="text-sm text-slate-600 mb-1">Target Price</div>
                           <div className="text-2xl font-bold text-blue-600">
-                            Rs. {stock.targetPrice.toLocaleString()}
+                            Rs. {stock.targetPrice.toLocaleString('en-IN')}
                           </div>
                           {targetDiff !== null && ltp && (
                             <div className="text-sm font-semibold mt-2">

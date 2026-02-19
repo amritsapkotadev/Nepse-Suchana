@@ -66,7 +66,7 @@ export default function StockTable({ stocks, title, showName = true, showTurnove
                       </td>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
-                      Rs {stock.lastTradedPrice.toLocaleString()}
+                      Rs {stock.lastTradedPrice.toLocaleString('en-IN')}
                     </td>
                     <td className={`px-6 py-4 whitespace-nowrap text-sm ${stock.change >= 0 ? 'text-green-600' : 'text-red-600'} font-semibold`}>
                       {stock.change >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%

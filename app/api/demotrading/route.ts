@@ -5,7 +5,8 @@ import {
   getDemoTradingAccount,
   updateDemoTradingAccount,
   createDemoTradingTransaction,
-  deleteDemoTradingTransaction
+  deleteDemoTradingTransaction,
+  getDemoTradingTransactions
 } from '@/lib/services/demotrading';
 
 export const runtime = 'nodejs';
@@ -13,12 +14,28 @@ export const runtime = 'nodejs';
 export async function GET(req: NextRequest) {
   try {
     const user = await verifyAuth(req);
-    const account = await getDemoTradingAccount(user.id);
-    return NextResponse.json({ success: true, data: account });
+    try {
+      const account = await getDemoTradingAccount(user.id);
+      const transactions = await getDemoTradingTransactions(account.id, user.id);
+      return NextResponse.json({ 
+        success: true, 
+        data: { ...account, transactions } 
+      });
+    } catch (err: any) {
+      if (err.message === 'Demo trading account not found') {
+        const account = await createDemoTradingAccount(user.id);
+        return NextResponse.json({ 
+          success: true, 
+          data: { ...account, transactions: [] } 
+        });
+      }
+      throw err;
+    }
   } catch (error: any) {
+    const status = error.message.includes('No token') || error.message.includes('Invalid') ? 401 : 404;
     return NextResponse.json(
       { success: false, error: error.message },
-      { status: 404 }
+      { status }
     );
   }
 }

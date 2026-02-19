@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { safeFetch } from "@/app/lib/api-utils";
+import toast from "react-hot-toast";
 import {
   FaSearch, FaBuilding, FaHashtag, FaMoneyBillWave, FaPlusCircle,
   FaTrash, FaChartLine, FaInfoCircle, FaEdit, FaEye, FaEyeSlash,
@@ -86,6 +87,7 @@ export default function MultiPortfolioTracker() {
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockSuggestions, setStockSuggestions] = useState<Stock[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showTotalValue, setShowTotalValue] = useState(true);
@@ -250,7 +252,8 @@ export default function MultiPortfolioTracker() {
       });
       
       setPortfolios(prev => [...prev, newPortfolio]);
-      setSuccess('Portfolio created successfully!');
+      setSuccess("");
+      toast.success('Portfolio created successfully!');
       setShowAddModal(false);
       setPortfolioForm({ name: "", description: "", initial_balance: "" });
       
@@ -283,7 +286,8 @@ export default function MultiPortfolioTracker() {
         p.id === selectedPortfolio.id ? { ...p, ...updatedPortfolio } : p
       ));
       setSelectedPortfolio(updatedPortfolio);
-      setSuccess('Portfolio updated successfully!');
+      setSuccess("");
+      toast.success('Portfolio updated successfully!');
       setShowEditModal(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update portfolio';
@@ -317,7 +321,8 @@ export default function MultiPortfolioTracker() {
         setPortfolioStocks([]);
       }
       
-      setSuccess('Portfolio deleted successfully!');
+      setSuccess("");
+      toast.success('Portfolio deleted successfully!');
       setShowDeleteConfirm(false);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete portfolio';
@@ -363,7 +368,8 @@ export default function MultiPortfolioTracker() {
           ? { ...p, holdings_count: (p.holdings_count || 0) + 1 }
           : p
       ));
-      setSuccess(`${form.transactionType} transaction added successfully!`);
+      setSuccess("");
+      toast.success(`${form.transactionType} transaction added successfully!`);
       setShowStockModal(false);
       resetStockForm();
       setShowSuggestions(false);
@@ -391,28 +397,32 @@ export default function MultiPortfolioTracker() {
         ));
       }
       
-      setSuccess('Stock removed successfully!');
+      setSuccess("");
+    toast.success('Stock removed successfully!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete stock';
       setError(errorMessage);
     }
   };
 
-  // Search stock suggestions
-  const debouncedSearch = useCallback(
+  // Stable debounced search using useRef
+  const debouncedSearchRef = useRef(
     debounce((query: string) => {
-      console.log('debouncedSearch called, allStocksRef length:', allStocksRef.current.length);
       const stocks = allStocksRef.current;
       const lowerQuery = query.toLowerCase().trim();
       const filtered = (stocks || []).filter(stock =>
         !lowerQuery || stock.symbol.toLowerCase().includes(lowerQuery) ||
         stock.name.toLowerCase().includes(lowerQuery)
       ).slice(0, 10);
-      console.log('Filtered stocks:', filtered.length);
       setStockSuggestions(filtered);
-    }, 150),
-    []
+      setSearchQuery(query);
+    }, 150)
   );
+
+  // Search stock suggestions
+  const debouncedSearch = useCallback((query: string) => {
+    debouncedSearchRef.current(query);
+  }, []);
 
   const handleStockSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -420,11 +430,11 @@ export default function MultiPortfolioTracker() {
     debouncedSearch(value);
   };
 
-  const highlightMatch = (text: string, query: string) => {
+  const highlightMatch = useCallback((text: string, query: string) => {
     if (!query) return text;
     const regex = new RegExp(`(${query})`, 'ig');
     return text.replace(regex, '<mark>$1</mark>');
-  };
+  }, []);
 
   const selectSuggestion = (stock: Stock) => {
     setForm(prev => ({
@@ -434,6 +444,7 @@ export default function MultiPortfolioTracker() {
       buyPrice: (stock.currentPrice || 0).toString()
     }));
     setStockSuggestions([]);
+    setSearchQuery("");
   };
 
   const resetStockForm = () => {
@@ -446,6 +457,7 @@ export default function MultiPortfolioTracker() {
     });
     setStockSuggestions([]);
     setShowSuggestions(false);
+    setSearchQuery("");
   };
 
   const resetPortfolioForm = () => {
@@ -655,7 +667,7 @@ export default function MultiPortfolioTracker() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 text-sm">Initial Balance:</span>
-                    <span className="font-bold text-gray-900">Rs. {portfolio.initial_balance.toLocaleString()}</span>
+                    <span className="font-bold text-gray-900">Rs. {portfolio.initial_balance.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 text-sm">Holdings:</span>
@@ -664,7 +676,7 @@ export default function MultiPortfolioTracker() {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 text-sm">Total Value:</span>
                     <span className="font-bold text-emerald-600">
-                      Rs. {portfolio.total_value?.toLocaleString() || '0'}
+                      Rs. {portfolio.total_value?.toLocaleString('en-IN') || '0'}
                     </span>
                   </div>
                 </div>
@@ -723,10 +735,7 @@ export default function MultiPortfolioTracker() {
           
           <div className="flex gap-3">
             <button
-              onClick={() => {
-                if (allStocks.length === 0) fetchAllStocks();
-                setShowStockModal(true);
-              }}
+              onClick={() => setShowStockModal(true)}
               className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center shadow-md hover:shadow-xl"
             >
               <FaPlusCircle className="mr-2" />
@@ -1400,10 +1409,7 @@ export default function MultiPortfolioTracker() {
                         type="text"
                         value={form.symbol}
                         onChange={handleStockSearch}
-                        onFocus={() => {
-                          setShowSuggestions(true);
-                          debouncedSearch(form.symbol);
-                        }}
+                        onFocus={() => setShowSuggestions(true)}
                         className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                         placeholder="Search symbol..."
                         required
@@ -1432,8 +1438,8 @@ export default function MultiPortfolioTracker() {
                                   >
                                     <div className="flex justify-between items-center">
                                       <div>
-                                        <span className="font-bold text-blue-600" dangerouslySetInnerHTML={{ __html: highlightMatch(stock.symbol, form.symbol) }} />
-                                        <p className="text-sm text-gray-600 truncate" dangerouslySetInnerHTML={{ __html: highlightMatch(stock.name, form.symbol) }} />
+                                        <span className="font-bold text-blue-600" dangerouslySetInnerHTML={{ __html: highlightMatch(stock.symbol, searchQuery) }} />
+                                        <p className="text-sm text-gray-600 truncate" dangerouslySetInnerHTML={{ __html: highlightMatch(stock.name, searchQuery) }} />
                                       </div>
                                       {stock.currentPrice && (
                                         <span className="font-bold text-gray-900">

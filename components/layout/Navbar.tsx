@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { useAppLoading } from '@/components/AppLoadingProvider';
 import { useState, useRef, useEffect } from 'react';
@@ -30,6 +30,7 @@ function formatCrore(num: number): string {
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuth();
   const { isAppLoading } = useAppLoading();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -41,76 +42,6 @@ export function Navbar() {
   const [selectedStock, setSelectedStock] = useState<Stock | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
-
-  useEffect(() => {
-    async function fetchStocks() {
-      setIsLoadingStocks(true);
-      try {
-        const res = await fetch('/api/nepse-proxy', { 
-          cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache' }
-        });
-        const data = await res.json();
-        if (data.liveCompanyData) {
-          const stocks: Stock[] = data.liveCompanyData.map((c: { symbol: string; securityName: string; lastTradedPrice: number; change: number; percentageChange: number; totalTradeValue: number }) => ({
-            symbol: c.symbol,
-            name: c.securityName,
-            lastTradedPrice: c.lastTradedPrice,
-            change: c.change,
-            changePercent: c.percentageChange,
-            turnover: c.totalTradeValue,
-          }));
-          setAllStocks(stocks);
-        }
-      } catch (err) {
-        console.error('Failed to fetch stocks:', err);
-      } finally {
-        setIsLoadingStocks(false);
-      }
-    }
-    fetchStocks();
-  }, []);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setSearchOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    if (searchQuery.length > 0) {
-      const filtered = allStocks
-        .filter(s => 
-          s.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-        .sort((a, b) => {
-          const aSymbolMatch = a.symbol.toLowerCase() === searchQuery.toLowerCase();
-          const bSymbolMatch = b.symbol.toLowerCase() === searchQuery.toLowerCase();
-          if (aSymbolMatch && !bSymbolMatch) return -1;
-          if (!aSymbolMatch && bSymbolMatch) return 1;
-          
-          const aSymbolStarts = a.symbol.toLowerCase().startsWith(searchQuery.toLowerCase());
-          const bSymbolStarts = b.symbol.toLowerCase().startsWith(searchQuery.toLowerCase());
-          if (aSymbolStarts && !bSymbolStarts) return -1;
-          if (!aSymbolStarts && bSymbolStarts) return 1;
-          
-          return b.turnover - a.turnover;
-        })
-        .slice(0, 50);
-      setSearchResults(filtered);
-      setSearchOpen(true);
-    } else {
-      setSearchResults([]);
-      setSearchOpen(false);
-    }
-  }, [searchQuery, allStocks]);
-
   const handleStockClick = (stock: Stock) => {
     setSelectedStock(stock);
     setSearchQuery('');
@@ -118,8 +49,6 @@ export function Navbar() {
   };
 
   const isStaticPage = pathname === '/disclaimer' || pathname === '/privacy-policy' || pathname === '/terms' || pathname === '/features';
-
-  if (isAppLoading && !isStaticPage) return null;
 
   return (
     <>
@@ -255,7 +184,7 @@ export function Navbar() {
                         <p className="text-xs text-slate-500">{user.email}</p>
                       </div>
                       <button
-                        onClick={logout}
+                        onClick={() => { logout(); }}
                         className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-slate-100"
                       >
                         Logout

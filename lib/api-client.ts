@@ -25,13 +25,18 @@ async function handleResponse<T>(response: Response): Promise<T> {
   
   if (!response.ok) {
     let errorMessage = `Request failed with status ${response.status}`;
+    const isLoginEndpoint = response.url.includes('/api/auth/login');
     
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json();
       errorMessage = data.error || data.message || errorMessage;
       
       if (response.status === 401) {
-        if (typeof window !== 'undefined') {
+        // For login endpoint, show the specific error message (e.g., "Invalid email or password")
+        // For other endpoints, show session expired
+        if (isLoginEndpoint) {
+          toast.error(errorMessage);
+        } else if (typeof window !== 'undefined') {
           localStorage.removeItem('token');
           toast.error('Session expired. Please login again.');
           window.location.href = '/login';

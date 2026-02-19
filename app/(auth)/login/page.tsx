@@ -39,8 +39,8 @@ export default function LoginPage() {
       toast.success('Welcome back!');
       router.push('/dashboard');
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Login failed. Please try again.';
-      toast.error(message);
+      // Error toast is already shown by api-client
+      // This catch block prevents the error from propagating
     }
   };
 

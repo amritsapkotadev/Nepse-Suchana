@@ -2,16 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAppLoading } from '@/components/AppLoadingProvider';
 import { BarChart3 } from 'lucide-react';
 
 export function Footer() {
   const pathname = usePathname();
-  const { isAppLoading } = useAppLoading();
-  const isStaticPage = pathname === '/disclaimer' || pathname === '/privacy-policy' || pathname === '/terms' || pathname === '/features';
   const isQuickLinksPage = pathname === '/features' || pathname === '/disclaimer' || pathname === '/privacy-policy' || pathname === '/terms';
-
-  if (isAppLoading && !isStaticPage) return null;
 
   if (isQuickLinksPage) {
     return (

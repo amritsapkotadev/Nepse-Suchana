@@ -120,6 +120,14 @@ export default function Dashboard() {
   const totalShares = holdings.reduce((sum, h) => sum + h.quantity, 0);
   const companiesHeld = holdings.length;
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Loader />
+      </div>
+    );
+  }
+
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
@@ -129,14 +137,6 @@ export default function Dashboard() {
             Login
           </Link>
         </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-        <Loader />
       </div>
     );
   }
