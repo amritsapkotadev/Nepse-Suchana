@@ -288,39 +288,27 @@ export default function Home() {
         )}
         {/* ...existing code... */}
 
-        {/* Header with Market Status */}
-        <header className="bg-gradient-to-r from-slate-800 to-slate-900 text-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${isRefreshing ? 'bg-yellow-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                  <span className="font-medium">Live Market Data</span>
-                </div>
-                <div className="hidden md:block text-sm text-slate-300">
-                  Auto-refresh every 15s • Market Hours: 11:00 AM - 3:00 PM
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-slate-300">Last Updated:</span>
-                  <span className="font-medium bg-slate-800/50 px-3 py-1 rounded-lg">
-                    {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                  </span>
-                </div>
-               
-              </div>
-            </div>
-          </div>
-        </header>
-
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Main Dashboard Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
             {/* NEPSE Index Card */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden hover:shadow-2xl transition-shadow duration-300">
+              <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden hover:shadow-2xl transition-shadow duration-300 h-full">
+                <div className="p-6 pb-0">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                      <span className="text-sm font-semibold text-slate-700">Live Market Data</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <span>Auto-refresh every 15s</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="hidden sm:inline">Market Hours: 11:00 AM - 3:00 PM</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span>Last Updated: {lastUpdated.toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                </div>
                 <div className="p-8">
                   <div className="flex items-center justify-between mb-8">
                     <div>
