@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { FaChartLine, FaMoneyBillWave, FaHashtag, FaPlusCircle, FaTrash } from "react-icons/fa";
 import toast from "react-hot-toast";
 import { useAuth } from "@/components/AuthProvider";
+import { Loader } from "@/components/Loader";
 
 interface Trade {
   id: number;
@@ -148,8 +149,8 @@ export default function DemoTrading() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+        <Loader />
       </div>
     );
   }
