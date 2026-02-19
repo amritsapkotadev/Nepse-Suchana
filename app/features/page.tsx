@@ -1,80 +1,52 @@
 "use client";
 
-import Link from "next/link";
 import { 
   TrendingUp, 
   PieChart, 
-  Zap, 
-  Bell, 
-  LineChart, 
-  ShieldCheck 
+  Eye, 
+  Wallet, 
+  Search, 
+  Shield,
+  BarChart3,
+  Target
 } from "lucide-react";
 
 const features = [
   {
-    title: "Live NEPSE Data Integration",
-    desc: "Real-time ticker updates and index tracking with millisecond accuracy.",
-    icon: <Zap className="w-6 h-6 text-blue-600" />,
+    title: "Real-Time Market Dashboard",
+    desc: "Live NEPSE index tracking, market sentiment, top gainers, losers, and turnover with auto-refresh every 15 seconds.",
+    icon: <BarChart3 className="w-6 h-6 text-blue-600" />,
   },
   {
-    title: "Smart Portfolio Management",
-    desc: "Automatically track P/L, dividends, and weighted average costs.",
+    title: "Multi-Portfolio Management",
+    desc: "Create and manage up to 5 portfolios with transaction tracking, P/L calculation, and detailed holdings view.",
     icon: <PieChart className="w-6 h-6 text-indigo-600" />,
   },
   {
-    title: "Advanced Technical Charting",
-    desc: "Interactive candlestick charts with RSI, MACD, and volume indicators.",
-    icon: <LineChart className="w-6 h-6 text-blue-500" />,
+    title: "Smart Watchlist",
+    desc: "Track favorite stocks with target prices, notes, and instant alerts when your target price is reached.",
+    icon: <Eye className="w-6 h-6 text-amber-500" />,
   },
   {
-    title: "Instant Price Alerts",
-    desc: "Get notified via SMS or Email the moment your target price is hit.",
-    icon: <Bell className="w-6 h-6 text-amber-500" />,
+    title: "Demo Trading Simulator",
+    desc: "Practice trading with virtual currency. Execute buy/sell orders and track your performance risk-free.",
+    icon: <Wallet className="w-6 h-6 text-emerald-500" />,
   },
   {
-    title: "Floor-sheet Analytics",
-    desc: "Deep dive into broker-wise buying and selling patterns.",
-    icon: <TrendingUp className="w-6 h-6 text-emerald-500" />,
+    title: "Advanced Stock Search",
+    desc: "Search stocks by symbol or name with live prices, change percentages, and turnover data in real-time.",
+    icon: <Search className="w-6 h-6 text-blue-500" />,
   },
   {
     title: "Secure Authentication",
-    desc: "Bank-grade encryption to keep your financial data private and safe.",
-    icon: <ShieldCheck className="w-6 h-6 text-slate-700" />,
+    desc: "Bank-grade JWT authentication to keep your portfolio and watchlist data private and secure.",
+    icon: <Shield className="w-6 h-6 text-slate-700" />,
   },
 ];
 
 export default function FeaturesPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-700 to-indigo-700 bg-clip-text text-transparent">
-                Nepse Suchana
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/portfolio"
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-blue-600:text-blue-400 transition-colors"
-              >
-                Portfolio
-              </Link>
-              <Link
-                href="/"
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium hover:shadow-lg transition-all"
-              >
-                Home
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4">
@@ -89,9 +61,9 @@ export default function FeaturesPage() {
           {features.map((feature, i) => (
             <div
               key={i}
-              className="group bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+              className="group bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
             >
-              <div className="mb-4 p-3 bg-slate-50 w-fit rounded-xl group-hover:bg-blue-50:bg-blue-900/30 transition-colors">
+              <div className="mb-4 p-3 bg-slate-50 w-fit rounded-xl group-hover:bg-blue-50 transition-colors">
                 {feature.icon}
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">

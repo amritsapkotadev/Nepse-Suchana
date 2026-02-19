@@ -313,12 +313,18 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="p-8">
-                  <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center justify-between mb-2">
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-800 mb-1">NEPSE Index</h2>
-                      <p className="text-slate-600">Nepal Stock Exchange Composite Index</p>
+                      <h2 className="text-xl font-bold text-slate-800">NEPSE Index</h2>
+                      <p className="text-sm text-slate-500">Nepal Stock Exchange Composite Index</p>
                     </div>
-                    <div className={`px-5 py-2.5 rounded-xl text-lg font-bold flex items-center gap-1 ${nepseIndex?.changePercent && nepseIndex.changePercent >= 0 
+                  </div>
+                  
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="text-5xl font-bold text-slate-800">
+                      {nepseIndex?.currentValue?.toFixed(2) || 'N/A'}
+                    </div>
+                    <div className={`px-4 py-2 rounded-xl text-lg font-bold flex items-center gap-1 ${nepseIndex?.changePercent && nepseIndex.changePercent >= 0 
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                       : 'bg-red-50 text-red-700 border border-red-200'}`}>
                       {nepseIndex?.changePercent && nepseIndex.changePercent >= 0 ? (
@@ -334,23 +340,18 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  <div className="flex items-end justify-between mb-8">
-                    <div>
-                      <div className="text-5xl font-bold text-slate-800 mb-3">
-                        {nepseIndex?.currentValue?.toFixed(2) || 'N/A'}
-                      </div>
-                      <div className={`text-xl font-medium ${nepseIndex?.change && nepseIndex.change >= 0 
-                        ? 'text-emerald-600' 
-                        : 'text-red-600'}`}>
+                  <div className="flex items-center justify-between text-sm mb-8">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500">Today's Change:</span>
+                      <span className={`font-medium ${nepseIndex?.change && nepseIndex.change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                         {nepseIndex?.change && nepseIndex.change >= 0 ? '+' : ''}{nepseIndex?.change?.toFixed(2) || '0.00'}
-                        <span className="text-slate-500 text-base ml-3">Today's Change</span>
-                      </div>
+                      </span>
                     </div>
-                    <div className="text-right">
-                      <div className="text-slate-600 mb-2">Previous Close</div>
-                      <div className="text-2xl font-semibold text-slate-800">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500">Previous Close:</span>
+                      <span className="font-medium text-slate-700">
                         {((nepseIndex?.currentValue || 0) - (nepseIndex?.change || 0)).toFixed(2)}
-                      </div>
+                      </span>
                     </div>
                   </div>
 
@@ -632,7 +633,7 @@ export default function Home() {
                     <BarChart3 className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-slate-800 text-xl">NEPSE Dashboard</h3>
+                    <h3 className="font-bold text-slate-800 text-xl">NEPSE Suchana</h3>
                     <p className="text-slate-600">Real-time market analytics platform</p>
                   </div>
                 </div>
@@ -656,26 +657,11 @@ export default function Home() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                  <h4 className="font-bold text-slate-800 mb-4">Platform</h4>
+                  <h4 className="font-bold text-slate-800 mb-4">Quick Links</h4>
                   <ul className="space-y-3">
                     <li><a href="/features" className="text-slate-600 hover:text-blue-600 transition-colors">Features</a></li>
-                    <li><a href="/pricing" className="text-slate-600 hover:text-blue-600 transition-colors">Pricing</a></li>
-                    <li><a href="/api" className="text-slate-600 hover:text-blue-600 transition-colors">API</a></li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-800 mb-4">Resources</h4>
-                  <ul className="space-y-3">
-                    <li><a href="/documentation" className="text-slate-600 hover:text-blue-600 transition-colors">Documentation</a></li>
-                    <li><a href="/blog" className="text-slate-600 hover:text-blue-600 transition-colors">Blog</a></li>
-                    <li><a href="/support" className="text-slate-600 hover:text-blue-600 transition-colors">Support</a></li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-800 mb-4">Legal</h4>
-                  <ul className="space-y-3">
                     <li><a href="/privacy" className="text-slate-600 hover:text-blue-600 transition-colors">Privacy Policy</a></li>
                     <li><a href="/terms" className="text-slate-600 hover:text-blue-600 transition-colors">Terms of Service</a></li>
                     <li><a href="/disclaimer" className="text-slate-600 hover:text-blue-600 transition-colors">Disclaimer</a></li>

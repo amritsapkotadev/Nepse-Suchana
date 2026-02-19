@@ -7,8 +7,9 @@ export function Footer() {
   const pathname = usePathname();
   const { isAppLoading } = useAppLoading();
   const isAuthPage = pathname === '/login' || pathname === '/signup';
+  const isStaticPage = pathname === '/disclaimer' || pathname === '/privacy-policy' || pathname === '/terms' || pathname === '/features';
 
-  if (isAuthPage || isAppLoading) return null;
+  if (isAuthPage || (isAppLoading && !isStaticPage)) return null;
 
   return (
     <footer className="border-t border-slate-200 py-4">
