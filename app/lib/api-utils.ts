@@ -1,3 +1,5 @@
+const fetchingCache: Record<string, Promise<any>> = {};
+
 export function getAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
@@ -60,13 +62,29 @@ export async function safeFetch<T>(
   url: string,
   options?: RequestInit
 ): Promise<T> {
+  // Return existing promise if fetch is in progress for this URL
+  const cached = fetchingCache[url];
+  if (cached !== undefined) {
+    return cached as Promise<T>;
+  }
+  
   const headers = getAuthHeaders();
-  const response = await fetch(url, {
+  
+  const fetchPromise = fetch(url, {
     ...options,
     headers: {
       ...headers,
       ...options?.headers,
     },
+  }).then(async (response) => {
+    try {
+      return await handleApiResponse<T>(response);
+    } finally {
+      delete fetchingCache[url];
+    }
   });
-  return handleApiResponse<T>(response);
+  
+  fetchingCache[url] = fetchPromise;
+  
+  return fetchPromise;
 }

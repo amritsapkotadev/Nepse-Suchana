@@ -46,26 +46,6 @@ interface PortfolioStock {
 }
 
 export default function MultiPortfolioTracker() {
-    // Fetch all stocks for suggestions from backend API
-    const fetchAllStocks = async () => {
-      try {
-        const data = await safeFetch<any>('/api/stocks');
-        console.log('Fetched stocks from /api/stocks:', data);
-         if (Array.isArray(data)) {
-          setAllStocks(data);
-        } else if (data && Array.isArray(data.stocks)) {
-          setAllStocks(data.stocks);
-        } else if (data && Array.isArray(data.data)) {
-          setAllStocks(data.data);
-        } else {
-          setAllStocks([]);
-        }
-      } catch (err) {
-        console.error('Failed to fetch stocks:', err);
-        setAllStocks([]);
-      }
-    };
-    
   // Multi-portfolio state
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
@@ -118,30 +98,36 @@ export default function MultiPortfolioTracker() {
   const inputRef = useRef<HTMLInputElement>(null);
   const portfolioMenuRef = useRef<HTMLDivElement>(null);
 
-  // Fetch portfolios on mount
-  useEffect(() => {
-    fetchPortfolios();
-    fetchAllStocks();
-  }, []);
-
-  // Close portfolio menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (portfolioMenuRef.current && !portfolioMenuRef.current.contains(event.target as Node)) {
-        setShowPortfolioMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // Cache for fetched data
+  const portfoliosCache = useRef<Portfolio[] | null>(null);
+  const stocksCache = useRef<Stock[] | null>(null);
+  const isFetching = useRef(false);
 
   // Fetch portfolios from backend
-  const fetchPortfolios = async () => {
+  const fetchPortfolios = useCallback(async (force = false) => {
+    if (isFetching.current && !force) return;
+    if (!force && portfoliosCache.current) {
+      const data = portfoliosCache.current;
+      setPortfolios(data);
+      if (data.length > 0 && !selectedPortfolio) {
+        setSelectedPortfolio(data[0]);
+        await fetchPortfolioData(data[0].id);
+      } else if (data.length === 0) {
+        setSelectedPortfolio(null);
+        setPortfolioStocks([]);
+      }
+      setIsLoading(prev => ({ ...prev, portfolios: false }));
+      return;
+    }
+    
+    isFetching.current = true;
+    
     try {
       setIsLoading(prev => ({ ...prev, portfolios: true }));
       setError("");
       
       const data = await safeFetch<Portfolio[]>('/api/portfolios');
+      portfoliosCache.current = data;
       setPortfolios(data);
       
       if (data.length > 0 && !selectedPortfolio) {
@@ -155,12 +141,13 @@ export default function MultiPortfolioTracker() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch portfolios';
       setError(errorMessage);
     } finally {
+      isFetching.current = false;
       setIsLoading(prev => ({ ...prev, portfolios: false }));
     }
-  };
+  }, [selectedPortfolio]);
 
   // Fetch portfolio stocks
-  const fetchPortfolioData = async (portfolioId: number) => {
+  const fetchPortfolioData = useCallback(async (portfolioId: number) => {
     try {
       setIsLoading(prev => ({ ...prev, portfolio: true }));
       setError("");
@@ -172,7 +159,7 @@ export default function MultiPortfolioTracker() {
         companyName: stock.company_name || "",
         quantity: stock.quantity,
         buyPrice: Number(stock.average_price),
-        transactionType: "Buy", // or infer if you add this to backend
+        transactionType: "Buy",
         dateAdded: new Date(stock.created_at),
         portfolio_id: stock.portfolio_id
       })));
@@ -182,7 +169,60 @@ export default function MultiPortfolioTracker() {
     } finally {
       setIsLoading(prev => ({ ...prev, portfolio: false }));
     }
-  };
+  }, []);
+
+  // Fetch all stocks for suggestions
+  const fetchAllStocks = useCallback(async (force = false) => {
+    if (!force && stocksCache.current) {
+      setAllStocks(stocksCache.current);
+      return;
+    }
+    
+    try {
+      const data = await safeFetch<any>('/api/stocks');
+      let stocks: Stock[] = [];
+      if (Array.isArray(data)) {
+        stocks = data;
+      } else if (data && Array.isArray(data.stocks)) {
+        stocks = data.stocks;
+      } else if (data && Array.isArray(data.data)) {
+        stocks = data.data;
+      }
+      stocksCache.current = stocks;
+      setAllStocks(stocks);
+    } catch (err) {
+      console.error('Failed to fetch stocks:', err);
+      setAllStocks([]);
+    }
+  }, []);
+
+  // Fetch portfolios on mount
+  useEffect(() => {
+    if (portfoliosCache.current) {
+      setPortfolios(portfoliosCache.current);
+      if (portfoliosCache.current.length > 0) {
+        setSelectedPortfolio(portfoliosCache.current[0]);
+        fetchPortfolioData(portfoliosCache.current[0].id);
+      }
+      setIsLoading(prev => ({ ...prev, portfolios: false }));
+    } else {
+      fetchPortfolios(true);
+    }
+    if (!stocksCache.current) {
+      fetchAllStocks(true);
+    }
+  }, []);
+
+  // Close portfolio menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (portfolioMenuRef.current && !portfolioMenuRef.current.contains(event.target as Node)) {
+        setShowPortfolioMenu(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Create new portfolio
   const handleCreatePortfolio = async (e: React.FormEvent) => {

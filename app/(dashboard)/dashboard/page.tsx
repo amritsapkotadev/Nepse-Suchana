@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { FaChartLine, FaMoneyBillWave, FaHashtag, FaBuilding } from 'react-icons/fa';
 import { useAuth } from '@/components/AuthProvider';
@@ -35,10 +35,29 @@ export default function Dashboard() {
   const [holdings, setHoldings] = useState<PortfolioHolding[]>([]);
   const [stockPrices, setStockPrices] = useState<Record<string, StockPrice>>({});
   const [loading, setLoading] = useState(true);
+  
+  // Cache for dashboard data
+  const dataCache = useRef<{
+    portfolios: Portfolio[];
+    holdings: PortfolioHolding[];
+    stockPrices: Record<string, StockPrice>;
+  } | null>(null);
+  const isFetching = useRef(false);
 
   useEffect(() => {
     async function fetchData() {
-      if (!user) return;
+      if (!user || isFetching.current) return;
+      
+      // Use cache if available
+      if (dataCache.current) {
+        setPortfolios(dataCache.current.portfolios);
+        setHoldings(dataCache.current.holdings);
+        setStockPrices(dataCache.current.stockPrices);
+        setLoading(false);
+        return;
+      }
+      
+      isFetching.current = true;
       
       try {
         // Fetch portfolios
@@ -68,6 +87,13 @@ export default function Dashboard() {
                   };
                 });
                 setStockPrices(priceMap);
+                
+                // Store in cache
+                dataCache.current = {
+                  portfolios: portfoliosData,
+                  holdings: holdingsData,
+                  stockPrices: priceMap
+                };
               }
             }
           }
@@ -75,6 +101,7 @@ export default function Dashboard() {
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
       } finally {
+        isFetching.current = false;
         setLoading(false);
       }
     }

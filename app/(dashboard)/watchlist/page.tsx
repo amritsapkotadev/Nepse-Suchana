@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { 
   FaTrash, 
@@ -54,30 +54,27 @@ export default function Watchlist() {
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Fetch all stocks on mount
-  useEffect(() => {
-    const fetchStocks = async () => {
-      try {
-        const res = await fetch(NEPSE_API_URL);
-        if (!res.ok) throw new Error("Failed to fetch stocks");
-        const data = await res.json();
-        setAllStocks(data.liveCompanyData || []);
-        const map: Record<string, any> = {};
-        (data.liveCompanyData || []).forEach((s: any) => { 
-          map[s.symbol] = s; 
-        });
-        setLiveMap(map);
-      } catch (err) {
-        console.error('Error fetching stocks:', err);
-        setAllStocks([]);
-        setLiveMap({});
-      }
-    };
-    fetchStocks();
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchStocks, 30000);
-    return () => clearInterval(interval);
+  const fetchStocks = useCallback(async () => {
+    try {
+      const res = await fetch(NEPSE_API_URL);
+      if (!res.ok) throw new Error("Failed to fetch stocks");
+      const data = await res.json();
+      setAllStocks(data.liveCompanyData || []);
+      const map: Record<string, any> = {};
+      (data.liveCompanyData || []).forEach((s: any) => { 
+        map[s.symbol] = s; 
+      });
+      setLiveMap(map);
+    } catch (err) {
+      console.error('Error fetching stocks:', err);
+      setAllStocks([]);
+      setLiveMap({});
+    }
   }, []);
+
+  useEffect(() => {
+    fetchStocks();
+  }, [fetchStocks]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
