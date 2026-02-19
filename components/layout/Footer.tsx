@@ -1,12 +1,14 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useAppLoading } from '@/components/AppLoadingProvider';
 
 export function Footer() {
   const pathname = usePathname();
+  const { isAppLoading } = useAppLoading();
   const isAuthPage = pathname === '/login' || pathname === '/signup';
 
-  if (isAuthPage) return null;
+  if (isAuthPage || isAppLoading) return null;
 
   return (
     <footer className="border-t border-slate-200 py-4">

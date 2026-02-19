@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { useAppLoading } from "@/components/AppLoadingProvider";
 import StockTable from './components/StockTable';
 import IndexChart from './components/IndexChart';
 import Link from 'next/link';
@@ -171,6 +172,14 @@ export default function Home() {
   };
 
   const { nepseData, loading, error, isRefreshing, lastUpdated, refreshCount, refreshData } = useNepseData();
+  const { setIsAppLoading } = useAppLoading();
+
+  useEffect(() => {
+    if (!loading) {
+      setIsAppLoading(false);
+    }
+  }, [loading, setIsAppLoading]);
+
   const nepseIndex = useMemo(() => nepseData?.indices?.find(i => i.symbol === 'NEPSE'), [nepseData]);
   const totalTurnover = useMemo(() => nepseData?.marketSummary?.find(m => m.name === 'Total Turnover Rs:')?.value || 0, [nepseData]);
   const totalVolume = useMemo(() => nepseData?.marketSummary?.find(m => m.name === 'Total Traded Shares')?.value || 0, [nepseData]);

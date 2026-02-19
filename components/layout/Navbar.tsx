@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
+import { useAppLoading } from '@/components/AppLoadingProvider';
 import { useState, useRef, useEffect } from 'react';
 import { BarChart3 } from 'lucide-react';
 import StockDetailModal from '@/app/components/Stockdetailmodal';
@@ -30,6 +31,7 @@ function formatCrore(num: number): string {
 export function Navbar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { isAppLoading } = useAppLoading();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -116,6 +118,7 @@ export function Navbar() {
   };
 
   if (isAuthPage) return null;
+  if (isAppLoading) return null;
 
   return (
     <>
