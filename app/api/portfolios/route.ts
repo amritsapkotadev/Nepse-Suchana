@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth';
 import { createPortfolio, getUserPortfolios } from '@/lib/services/portfolio';
+import { apiCache } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
     const user = await verifyAuth(req);
+    const cacheKey = `portfolios:${user.id}`;
+    
+    // Check cache first
+    const cached = apiCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json({ success: true, data: cached });
+    }
+    
     const portfolios = await getUserPortfolios(user.id);
+    
+    // Cache for 10 seconds
+    apiCache.set(cacheKey, portfolios, 10);
+    
     return NextResponse.json({ success: true, data: portfolios });
   } catch (error: any) {
     return NextResponse.json(

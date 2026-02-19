@@ -60,41 +60,47 @@ export default function Dashboard() {
       isFetching.current = true;
       
       try {
-        // Fetch portfolios
+        // Fetch portfolios first
         const portfoliosRes = await fetch('/api/portfolios');
         if (portfoliosRes.ok) {
-          const portfoliosData = await portfoliosRes.json();
+          const portfoliosResult = await portfoliosRes.json();
+          const portfoliosData = portfoliosResult.data || portfoliosResult;
           setPortfolios(portfoliosData);
           
           if (portfoliosData.length > 0) {
-            // Fetch holdings for first portfolio
-            const holdingsRes = await fetch(`/api/portfolio-holdings?portfolio_id=${portfoliosData[0].id}`);
+            // Fetch holdings and stock prices in parallel
+            const [holdingsRes, stocksRes] = await Promise.all([
+              fetch(`/api/portfolio-holdings?portfolio_id=${portfoliosData[0].id}`),
+              fetch('/api/nepse-proxy', { cache: 'no-store' })
+            ]);
+            
+            let holdingsData: PortfolioHolding[] = [];
             if (holdingsRes.ok) {
-              const holdingsData = await holdingsRes.json();
+              const holdingsResult = await holdingsRes.json();
+              holdingsData = holdingsResult.data || holdingsResult;
               setHoldings(holdingsData);
-              
-              // Fetch stock prices
-              const stocksRes = await fetch('/api/nepse-proxy', { cache: 'no-store' });
-              if (stocksRes.ok) {
-                const stocksData = await stocksRes.json();
-                const priceMap: Record<string, StockPrice> = {};
-                (stocksData.liveCompanyData || []).forEach((stock: { symbol: string; securityName: string; lastTradedPrice: number; change: number; percentageChange: number }) => {
-                  priceMap[stock.symbol] = {
-                    symbol: stock.symbol,
-                    lastTradedPrice: stock.lastTradedPrice,
-                    change: stock.change,
-                    percentageChange: stock.percentageChange
-                  };
-                });
-                setStockPrices(priceMap);
-                
-                // Store in cache
-                dataCache.current = {
-                  portfolios: portfoliosData,
-                  holdings: holdingsData,
-                  stockPrices: priceMap
+            }
+            
+            let priceMap: Record<string, StockPrice> = {};
+            if (stocksRes.ok) {
+              const stocksData = await stocksRes.json();
+              priceMap = {};
+              (stocksData.liveCompanyData || []).forEach((stock: { symbol: string; securityName: string; lastTradedPrice: number; change: number; percentageChange: number }) => {
+                priceMap[stock.symbol] = {
+                  symbol: stock.symbol,
+                  lastTradedPrice: stock.lastTradedPrice,
+                  change: stock.change,
+                  percentageChange: stock.percentageChange
                 };
-              }
+              });
+              setStockPrices(priceMap);
+              
+              // Store in cache
+              dataCache.current = {
+                portfolios: portfoliosData,
+                holdings: holdingsData,
+                stockPrices: priceMap
+              };
             }
           }
         }

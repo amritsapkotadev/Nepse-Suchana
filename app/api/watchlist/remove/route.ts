@@ -1,22 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth';
 import { removeFromWatchlist } from '@/lib/services/watchlist';
+import { apiCache } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
     const user = await verifyAuth(req);
-    const { userId, stockSymbol } = await req.json();
+    const { stock_symbol } = await req.json();
     
-    if (!stockSymbol) {
+    if (!stock_symbol) {
       return NextResponse.json(
-        { success: false, error: 'stockSymbol is required' },
+        { success: false, error: 'stock_symbol is required' },
         { status: 400 }
       );
     }
     
-    const item = await removeFromWatchlist(user.id, stockSymbol);
+    const item = await removeFromWatchlist(user.id, stock_symbol);
+    
+    // Invalidate cache
+    apiCache.set(`watchlist:${user.id}`, null, 0);
+    
     return NextResponse.json({ 
       success: true, 
       message: 'Stock removed from watchlist',

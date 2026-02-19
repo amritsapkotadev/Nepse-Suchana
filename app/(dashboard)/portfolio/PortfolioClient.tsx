@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import {
   FaSearch, FaBuilding, FaHashtag, FaMoneyBillWave, FaPlusCircle,
   FaTrash, FaChartLine, FaInfoCircle, FaEdit, FaEye, FaEyeSlash,
-  FaTimes, FaPercentage, FaRupeeSign, FaArrowUp, FaArrowDown,
+  FaTimes, FaPercentage, FaArrowUp, FaArrowDown,
   FaGift, FaDownload, FaUpload, FaDatabase, FaCalendarAlt, FaWallet,
   FaPiggyBank, FaChartBar, FaLayerGroup, FaCoins, FaHistory,
   FaMoneyBill, FaFilter, FaExternalLinkAlt, FaCopy, FaCheck,
@@ -1113,7 +1113,7 @@ export default function MultiPortfolioTracker() {
                       Initial Balance (Rs.)
                     </label>
                     <div className="relative">
-                      <FaRupeeSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium">Rs.</span>
                       <input
                         type="number"
                         step="0.01"
@@ -1378,7 +1378,7 @@ export default function MultiPortfolioTracker() {
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-xl font-semibold text-gray-900">
-                      Add Stock to {selectedPortfolio.name}
+                      Add Stock
                     </h3>
                     <p className="text-sm text-gray-500 mt-1">
                       Add a buy/sell transaction
@@ -1494,7 +1494,7 @@ export default function MultiPortfolioTracker() {
                         Price per Share *
                       </label>
                       <div className="relative">
-                        <FaRupeeSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium">Rs.</span>
                         <input
                           type="number"
                           step="0.01"

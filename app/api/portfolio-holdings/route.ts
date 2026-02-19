@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth';
 import { getPortfolioHoldings, addPortfolioHolding } from '@/lib/services/portfolioHoldings';
+import { apiCache } from '@/lib/cache';
 
 export const runtime = 'nodejs';
 
@@ -17,7 +18,19 @@ export async function GET(req: NextRequest) {
       );
     }
     
+    const cacheKey = `holdings:${user.id}:${portfolio_id}`;
+    
+    // Check cache first
+    const cached = apiCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json({ success: true, data: cached });
+    }
+    
     const holdings = await getPortfolioHoldings(user.id, parseInt(portfolio_id));
+    
+    // Cache for 10 seconds
+    apiCache.set(cacheKey, holdings, 10);
+    
     return NextResponse.json({ success: true, data: holdings });
   } catch (error: any) {
     return NextResponse.json(
@@ -59,6 +72,10 @@ export async function POST(req: NextRequest) {
       bonus_share,
       other_note
     );
+    
+    // Invalidate cache for this portfolio
+    apiCache.set(`holdings:${user.id}:${portfolio_id}`, null, 0);
+    
     return NextResponse.json({ success: true, data: holding }, { status: 201 });
   } catch (error: any) {
     if (error.message?.includes('already exists')) {

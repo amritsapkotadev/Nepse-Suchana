@@ -56,7 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error('Logout API error:', err);
+    }
     localStorage.removeItem('token');
     setUser(null);
     window.location.href = '/';

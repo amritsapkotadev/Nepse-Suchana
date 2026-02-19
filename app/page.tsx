@@ -470,7 +470,7 @@ export default function Home() {
                     <div key={index} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                       <div className="text-sm text-slate-500 mb-1 truncate">{summary.name}</div>
                       <div className="text-lg font-bold text-slate-800">
-                        {summary.name.includes('Turnover') ? `₹${formatCrore(summary.value)} Cr` : formatNumber(summary.value)}
+                        {summary.name.includes('Turnover') ? `Rs.${formatCrore(summary.value)} Cr` : formatNumber(summary.value)}
                       </div>
                     </div>
                   ))}
