@@ -101,6 +101,18 @@ export default function MultiPortfolioTracker() {
   const portfolioMenuRef = useRef<HTMLDivElement>(null);
   const allStocksRef = useRef<Stock[]>([]);
 
+  // Lock body scroll when stock modal is open
+  useEffect(() => {
+    if (showStockModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showStockModal]);
+
   // Cache for fetched data
   const portfoliosCache = useRef<Portfolio[] | null>(null);
   const isFetching = useRef(false);
@@ -711,25 +723,21 @@ export default function MultiPortfolioTracker() {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
                 <FaChartLine className="w-6 h-6 text-blue-600" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  {selectedPortfolio.name}
-                </h1>
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <h1 className="text-3xl font-bold text-gray-900">
+                    {selectedPortfolio.name}
+                  </h1>
+                  <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                    Created: {new Date(selectedPortfolio.created_at).toLocaleDateString()}
+                  </span>
+                </div>
                 {selectedPortfolio.description && (
                   <p className="text-gray-600 mt-1">
                     {selectedPortfolio.description}
                   </p>
                 )}
               </div>
-            </div>
-            <div className="flex flex-wrap gap-3 text-sm text-gray-500 mt-2">
-              <span className="flex items-center bg-gray-100 px-3 py-1 rounded-full">
-                <FaLock className="mr-1 text-xs" />
-                Portfolio ID: {selectedPortfolio.id}
-              </span>
-              <span className="bg-gray-100 px-3 py-1 rounded-full">
-                Created: {new Date(selectedPortfolio.created_at).toLocaleDateString()}
-              </span>
             </div>
           </div>
           

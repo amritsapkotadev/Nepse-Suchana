@@ -50,6 +50,77 @@ export function Navbar() {
 
   const isStaticPage = pathname === '/disclaimer' || pathname === '/privacy-policy' || pathname === '/terms' || pathname === '/features';
 
+  // Fetch stocks on mount
+  useEffect(() => {
+    async function fetchStocks() {
+      setIsLoadingStocks(true);
+      try {
+        const res = await fetch('/api/nepse-proxy', { 
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache' }
+        });
+        const data = await res.json();
+        if (data.liveCompanyData) {
+          const stocks: Stock[] = data.liveCompanyData.map((c: any) => ({
+            symbol: c.symbol,
+            name: c.securityName,
+            lastTradedPrice: c.lastTradedPrice,
+            change: c.change,
+            changePercent: c.percentageChange,
+            turnover: c.totalTradeValue,
+          }));
+          setAllStocks(stocks);
+        }
+      } catch (err) {
+        console.error('Failed to fetch stocks:', err);
+      } finally {
+        setIsLoadingStocks(false);
+      }
+    }
+    fetchStocks();
+  }, []);
+
+  // Close search when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter stocks based on search query
+  useEffect(() => {
+    if (searchQuery.length > 0) {
+      const filtered = allStocks
+        .filter(s => 
+          s.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+        .sort((a, b) => {
+          const aSymbolMatch = a.symbol.toLowerCase() === searchQuery.toLowerCase();
+          const bSymbolMatch = b.symbol.toLowerCase() === searchQuery.toLowerCase();
+          if (aSymbolMatch && !bSymbolMatch) return -1;
+          if (!aSymbolMatch && bSymbolMatch) return 1;
+          
+          const aSymbolStarts = a.symbol.toLowerCase().startsWith(searchQuery.toLowerCase());
+          const bSymbolStarts = b.symbol.toLowerCase().startsWith(searchQuery.toLowerCase());
+          if (aSymbolStarts && !bSymbolStarts) return -1;
+          if (!aSymbolStarts && bSymbolStarts) return 1;
+          
+          return b.turnover - a.turnover;
+        })
+        .slice(0, 50);
+      setSearchResults(filtered);
+      setSearchOpen(true);
+    } else {
+      setSearchResults([]);
+      setSearchOpen(false);
+    }
+  }, [searchQuery, allStocks]);
+
   return (
     <>
       <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200/50">
