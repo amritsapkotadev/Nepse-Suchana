@@ -52,13 +52,13 @@ export async function getUserPortfolios(userId: number): Promise<Portfolio[]> {
   
   const portfolios = await Promise.all(result.rows.map(async (p) => {
     const holdingsRes = await query(
-      'SELECT SUM(quantity * average_price) AS total_value, COUNT(*) AS holdings_count FROM portfolio_holdings WHERE portfolio_id = $1',
+      'SELECT SUM(quantity * average_price) AS total_invested, COUNT(*) AS holdings_count FROM portfolio_holdings WHERE portfolio_id = $1',
       [p.id]
     );
     return {
       ...p,
       holdings_count: Number(holdingsRes.rows[0].holdings_count || 0),
-      total_value: Number(holdingsRes.rows[0].total_value || 0)
+      total_value: Number(holdingsRes.rows[0].total_invested || 0)
     };
   }));
   

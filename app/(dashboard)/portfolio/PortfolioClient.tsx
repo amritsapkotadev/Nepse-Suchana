@@ -695,7 +695,9 @@ export default function MultiPortfolioTracker() {
                     <span className="font-bold text-gray-900">{portfolio.holdings_count || 0} stocks</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 text-sm">Total Value:</span>
+                    <span className="text-gray-500 text-sm">
+                      {selectedPortfolio?.id === portfolio.id && metrics ? 'Current Value:' : 'Total Invested:'}
+                    </span>
                     <span className="font-bold text-emerald-600">
                       {selectedPortfolio?.id === portfolio.id && metrics
                         ? `Rs. ${metrics.currentValue.toLocaleString('en-IN')}`
