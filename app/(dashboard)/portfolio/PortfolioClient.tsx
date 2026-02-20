@@ -484,6 +484,7 @@ export default function MultiPortfolioTracker() {
   const calculateMetrics = () => {
     if (!selectedPortfolio) return null;
     
+    // Calculate total investment (buy price × quantity)
     const totalInvestment = portfolioStocks
       .filter(s => s.transactionType === "Buy")
       .reduce((sum, stock) => sum + (stock.quantity * stock.buyPrice), 0);
@@ -493,7 +494,15 @@ export default function MultiPortfolioTracker() {
       .reduce((sum, stock) => sum + (stock.quantity * stock.buyPrice), 0);
     
     const netInvestment = totalInvestment - totalSales;
-    const currentValue = selectedPortfolio.total_value || netInvestment;
+    
+    // Calculate current value using live market prices
+    const currentValue = portfolioStocks
+      .filter(s => s.transactionType === "Buy")
+      .reduce((sum, stock) => {
+        const liveStock = allStocks.find(s => s.symbol === stock.symbol);
+        const currentPrice = liveStock?.currentPrice || stock.buyPrice;
+        return sum + (stock.quantity * currentPrice);
+      }, 0);
     
     const profitLoss = currentValue - netInvestment;
     const profitLossPercent = netInvestment > 0 ? (profitLoss / netInvestment) * 100 : 0;
@@ -507,7 +516,7 @@ export default function MultiPortfolioTracker() {
     };
   };
 
-  const metrics = useMemo(() => calculateMetrics(), [portfolioStocks, selectedPortfolio]);
+  const metrics = useMemo(() => calculateMetrics(), [portfolioStocks, selectedPortfolio, allStocks]);
 
   // Filter portfolio stocks
   const filteredStocks = portfolioStocks.filter(stock =>
@@ -688,7 +697,10 @@ export default function MultiPortfolioTracker() {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-500 text-sm">Total Value:</span>
                     <span className="font-bold text-emerald-600">
-                      Rs. {portfolio.total_value?.toLocaleString('en-IN') || '0'}
+                      {selectedPortfolio?.id === portfolio.id && metrics
+                        ? `Rs. ${metrics.currentValue.toLocaleString('en-IN')}`
+                        : `Rs. ${portfolio.total_value?.toLocaleString('en-IN') || '0'}`
+                      }
                     </span>
                   </div>
                 </div>
