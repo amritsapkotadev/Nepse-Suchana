@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth';
-import { getPortfolio, deletePortfolio } from '@/lib/services/portfolio';
+import { getPortfolio, deletePortfolio, updatePortfolio } from '@/lib/services/portfolio';
 
 export const runtime = 'nodejs';
 
@@ -17,6 +17,30 @@ export async function GET(
     return NextResponse.json(
       { success: false, error: error.message },
       { status: 404 }
+    );
+  }
+}
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await verifyAuth(req);
+    const { id } = await params;
+    const { name, description } = await req.json();
+    
+    const updatedPortfolio = await updatePortfolio(user.id, parseInt(id), {
+      name,
+      description
+    });
+    
+    return NextResponse.json({ success: true, data: updatedPortfolio });
+  } catch (error: any) {
+    const status = error.message === 'Portfolio name already exists' ? 400 : 404;
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status }
     );
   }
 }

@@ -98,7 +98,6 @@ export default function MultiPortfolioTracker() {
   const [showPortfolioMenu, setShowPortfolioMenu] = useState<number | null>(null);
   
   const inputRef = useRef<HTMLInputElement>(null);
-  const portfolioMenuRef = useRef<HTMLDivElement>(null);
   const allStocksRef = useRef<Stock[]>([]);
 
   // Lock body scroll when stock modal is open
@@ -236,17 +235,6 @@ export default function MultiPortfolioTracker() {
     }
   }, []);
 
-  // Close portfolio menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (portfolioMenuRef.current && !portfolioMenuRef.current.contains(event.target as Node)) {
-        setShowPortfolioMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   // Create new portfolio
   const handleCreatePortfolio = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -263,14 +251,21 @@ export default function MultiPortfolioTracker() {
         })
       });
       
-      setPortfolios(prev => [...prev, newPortfolio]);
+      // Add default fields that are expected by the UI
+      const portfolioWithDefaults = {
+        ...newPortfolio,
+        holdings_count: 0,
+        total_value: 0
+      };
+      
+      setPortfolios(prev => [...prev, portfolioWithDefaults]);
       setSuccess("");
       toast.success('Portfolio created successfully!');
       setShowAddModal(false);
       setPortfolioForm({ name: "", description: "", initial_balance: "" });
       
-      // Auto-select new portfolio
-      setSelectedPortfolio(newPortfolio);
+      // Auto-select new portfolio with defaults
+      setSelectedPortfolio(portfolioWithDefaults);
       await fetchPortfolioData(newPortfolio.id);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create portfolio';
@@ -294,10 +289,18 @@ export default function MultiPortfolioTracker() {
         body: JSON.stringify(editPortfolioForm)
       });
       
+      // Preserve holdings_count and total_value when updating
+      const mergedPortfolio = {
+        ...selectedPortfolio,
+        ...updatedPortfolio,
+        holdings_count: selectedPortfolio.holdings_count,
+        total_value: selectedPortfolio.total_value
+      };
+      
       setPortfolios(prev => prev.map(p => 
-        p.id === selectedPortfolio.id ? { ...p, ...updatedPortfolio } : p
+        p.id === selectedPortfolio.id ? mergedPortfolio : p
       ));
-      setSelectedPortfolio(updatedPortfolio);
+      setSelectedPortfolio(mergedPortfolio);
       setSuccess("");
       toast.success('Portfolio updated successfully!');
       setShowEditModal(false);
@@ -598,7 +601,7 @@ export default function MultiPortfolioTracker() {
               }}
             >
               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="relative" ref={portfolioMenuRef}>
+                <div className="relative">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

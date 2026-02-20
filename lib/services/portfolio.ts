@@ -78,6 +78,45 @@ export async function getPortfolio(userId: number, portfolioId: number): Promise
   return result.rows[0];
 }
 
+export async function updatePortfolio(
+  userId: number,
+  portfolioId: number,
+  updates: { name?: string; description?: string }
+): Promise<Portfolio> {
+  // Check if portfolio exists and belongs to user
+  const existingResult = await query(
+    'SELECT * FROM portfolios WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL',
+    [portfolioId, userId]
+  );
+  
+  if (existingResult.rows.length === 0) {
+    throw new Error('Portfolio not found');
+  }
+  
+  // If name is being updated, check for duplicates
+  if (updates.name) {
+    const nameCheck = await query(
+      'SELECT 1 FROM portfolios WHERE user_id = $1 AND name = $2 AND id != $3 AND deleted_at IS NULL',
+      [userId, updates.name, portfolioId]
+    );
+    
+    if (nameCheck.rows.length > 0) {
+      throw new Error('Portfolio name already exists');
+    }
+  }
+  
+  const result = await query(
+    `UPDATE portfolios 
+     SET name = COALESCE($3, name), 
+         description = COALESCE($4, description)
+     WHERE id = $1 AND user_id = $2 
+     RETURNING *`,
+    [portfolioId, userId, updates.name || null, updates.description || null]
+  );
+  
+  return result.rows[0];
+}
+
 export async function deletePortfolio(userId: number, portfolioId: number): Promise<void> {
   // First verify the portfolio exists and belongs to the user
   const portfolioResult = await query(
