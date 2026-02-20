@@ -238,54 +238,58 @@ All endpoints return JSON responses in the following format:
 
 ### Authentication
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/auth/register` | Register new user | No |
-| POST | `/api/auth/login` | Login user | No |
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `POST` | `/api/auth/register` | Register new user | ❌ |
+| `POST` | `/api/auth/login` | Login, returns JWT | ❌ |
 
 ### Portfolios
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/portfolios` | List user portfolios | Yes |
-| POST | `/api/portfolios` | Create portfolio | Yes |
-| GET | `/api/portfolios/[id]` | Get portfolio details | Yes |
-| DELETE | `/api/portfolios/[id]` | Delete portfolio | Yes |
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/portfolios` | List all user portfolios | ✅ |
+| `POST` | `/api/portfolios` | Create a new portfolio | ✅ |
+| `GET` | `/api/portfolios/[id]` | Get single portfolio | ✅ |
+| `PUT` | `/api/portfolios/[id]` | Update portfolio | ✅ |
+| `DELETE` | `/api/portfolios/[id]` | Delete portfolio | ✅ |
 
 ### Portfolio Holdings
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/portfolio-holdings?portfolio_id=X` | Get holdings | Yes |
-| POST | `/api/portfolio-holdings` | Add holding | Yes |
-| DELETE | `/api/portfolio-holdings/[id]` | Remove holding | Yes |
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/portfolio-holdings?portfolio_id=X` | Get holdings | ✅ |
+| `POST` | `/api/portfolio-holdings` | Add a holding | ✅ |
+| `DELETE` | `/api/portfolio-holdings/[id]` | Remove a holding | ✅ |
 
 ### Demo Trading
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/demotrading` | Get account | Yes |
-| POST | `/api/demotrading` | Create account or add transaction | Yes |
-| PUT | `/api/demotrading` | Update balance | Yes |
-| DELETE | `/api/demotrading?id=X` | Delete transaction | Yes |
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/demotrading` | Get account & balance | ✅ |
+| `POST` | `/api/demotrading` | Create account or add transaction | ✅ |
+| `PUT` | `/api/demotrading` | Update balance | ✅ |
+| `DELETE` | `/api/demotrading?id=X` | Delete a transaction | ✅ |
 
 ### Watchlist
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/watchlist` | Get watchlist | Yes |
-| POST | `/api/watchlist` | Add stock | Yes |
-| POST | `/api/watchlist/remove` | Remove stock | Yes |
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/watchlist` | Get user watchlist | ✅ |
+| `POST` | `/api/watchlist` | Add stock to watchlist | ✅ |
+| `POST` | `/api/watchlist/remove` | Remove stock | ✅ |
 
-### Stocks & Data
+### Stocks & Utilities
 
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| GET | `/api/stocks` | Fetch NEPSE stocks | No |
-| GET | `/api/nepse-proxy` | Proxy to NEPSE | No |
-| GET | `/api/dividends?portfolio_id=X` | Get dividends | Yes |
-| POST | `/api/dividends` | Add dividend | Yes |
-| GET | `/api/health` | Health check | No |
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/stocks` | Fetch all NEPSE stocks | ❌ |
+| `GET` | `/api/nepse-proxy` | Proxy to live NEPSE data | ❌ |
+| `GET` | `/api/dividends?portfolio_id=X` | Get dividends | ✅ |
+| `POST` | `/api/dividends` | Record a dividend | ✅ |
+| `DELETE` | `/api/dividends?id=X` | Delete a dividend | ✅ |
+| `GET` | `/api/health` | Server health check | ❌ |
+
+---
 
 ## 🔐 Authentication Flow
 
@@ -323,7 +327,7 @@ const newPortfolio = await safeFetch('/api/portfolios', {
 ---
 
 
-## Demo Trading Usage
+## 📡  Demo Trading - Quick Start
 
 1. Create a demo trading account (automatically starts with Rs. 1 Crore):
 ```bash
@@ -347,7 +351,7 @@ curl -X POST http://localhost:3000/api/demotrading \
 
 ```
 
-## Development Commands
+## 🧪 Development Commands
 
 ```bash
 npm run dev      # Start development server
@@ -356,13 +360,26 @@ npm run start    # Start production server
 npm run lint     # Run ESLint
 ```
 
-## Security Considerations
+## 🔒 Security Notes
 
-- JWT secrets should be long random strings (minimum 32 characters)
-- Cookies are httpOnly, sameSite: strict, and secure in production
-- All database queries use parameterized statements (no SQL injection)
-- API routes use Node.js runtime (not edge) due to pg and jwt dependencies
+- JWT secrets must be **at least 32 characters** — use a random generator
+- Cookies are `httpOnly`, `sameSite: strict`, and `secure` in production
+- All database queries use **parameterized statements** (no SQL injection)
+- API routes use **Node.js runtime** (not Edge) — required for `pg` and `jsonwebtoken`
+- Passwords are stored as hashed values — never in plaintext
 
-## License
+---
 
-MIT License
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature/your-feature`
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.
