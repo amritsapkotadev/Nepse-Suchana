@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS portfolio_holdings (
   stock_symbol VARCHAR(50) NOT NULL,
   quantity INTEGER NOT NULL,
   average_price DECIMAL(15,2) NOT NULL,
+  transaction_type VARCHAR(10) DEFAULT 'Buy',
   cash_dividend DECIMAL(15,2) DEFAULT 0,
   right_share INTEGER DEFAULT 0,
   bonus_share INTEGER DEFAULT 0,

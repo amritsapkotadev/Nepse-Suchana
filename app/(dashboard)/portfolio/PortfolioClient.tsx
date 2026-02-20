@@ -173,7 +173,7 @@ export default function MultiPortfolioTracker() {
         companyName: stock.company_name || "",
         quantity: stock.quantity,
         buyPrice: Number(stock.average_price),
-        transactionType: "Buy",
+        transactionType: stock.transaction_type || "Buy",
         dateAdded: new Date(stock.created_at),
         portfolio_id: stock.portfolio_id
       })));
@@ -369,7 +369,8 @@ export default function MultiPortfolioTracker() {
           portfolio_id: selectedPortfolio.id,
           stock_symbol: form.symbol.toUpperCase(),
           quantity,
-          average_price: buyPrice
+          average_price: buyPrice,
+          transaction_type: form.transactionType
         })
       });
       

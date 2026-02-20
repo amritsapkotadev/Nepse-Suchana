@@ -6,6 +6,7 @@ export interface PortfolioHolding {
   stock_symbol: string;
   quantity: number;
   average_price: number;
+  transaction_type: string;
   cash_dividend: number;
   right_share: number;
   bonus_share: number;
@@ -37,6 +38,7 @@ export async function addPortfolioHolding(
   stockSymbol: string,
   quantity: number,
   averagePrice: number,
+  transactionType: string = 'Buy',
   cashDividend: number = 0,
   rightShare: number = 0,
   bonusShare: number = 0,
@@ -53,13 +55,14 @@ export async function addPortfolioHolding(
   
   const result = await query(
     `INSERT INTO portfolio_holdings (
-      portfolio_id, stock_symbol, quantity, average_price, cash_dividend, right_share, bonus_share, other_note
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      portfolio_id, stock_symbol, quantity, average_price, transaction_type, cash_dividend, right_share, bonus_share, other_note
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
     [
       portfolioId,
       stockSymbol,
       quantity,
       averagePrice,
+      transactionType,
       cashDividend,
       rightShare,
       bonusShare,
