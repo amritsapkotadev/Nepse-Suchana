@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAuth } from '@/lib/auth';
-import { addDividend, getDividends } from '@/lib/services/dividends';
+import { addDividend, getDividends, deleteDividend } from '@/lib/services/dividends';
 
 export const runtime = 'nodejs';
 
@@ -44,6 +44,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { success: false, error: error.message },
       { status: error.message.includes('does not exist') ? 400 : 500 }
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    await verifyAuth(req);
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'id is required' },
+        { status: 400 }
+      );
+    }
+    
+    await deleteDividend(parseInt(id));
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message },
+      { status: 500 }
     );
   }
 }

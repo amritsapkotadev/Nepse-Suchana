@@ -39,3 +39,7 @@ export async function getDividends(portfolioId: number): Promise<Dividend[]> {
   const result = await query('SELECT * FROM dividends WHERE portfolio_id = $1', [portfolioId]);
   return result.rows;
 }
+
+export async function deleteDividend(dividendId: number): Promise<void> {
+  await query('DELETE FROM dividends WHERE id = $1', [dividendId]);
+}

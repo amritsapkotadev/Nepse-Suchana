@@ -294,6 +294,25 @@ export default function MultiPortfolioTracker() {
     }
   };
 
+  // Delete dividend
+  const handleDeleteDividend = async (dividendId: number) => {
+    const loadingToast = toast.loading('Deleting dividend...');
+    
+    try {
+      await safeFetch(`/api/dividends?id=${dividendId}`, {
+        method: 'DELETE'
+      });
+      
+      toast.dismiss(loadingToast);
+      setDividends(prev => prev.filter(d => d.id !== dividendId));
+      toast.success('Dividend deleted successfully!');
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete dividend';
+      toast.error(errorMessage);
+    }
+  };
+
   // Handle dividend stock symbol search
   const handleDividendStockSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value.toUpperCase();
@@ -1175,12 +1194,15 @@ export default function MultiPortfolioTracker() {
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Notes
                     </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {dividends.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center">
+                      <td colSpan={6} className="px-6 py-12 text-center">
                         <div className="text-center py-12">
                           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
                             <FaGift className="w-8 h-8 text-gray-400" />
@@ -1236,6 +1258,15 @@ export default function MultiPortfolioTracker() {
                           <span className="text-sm text-gray-500">
                             {dividend.notes || '-'}
                           </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => handleDeleteDividend(dividend.id)}
+                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Dividend"
+                          >
+                            <FaTrash className="w-4 h-4" />
+                          </button>
                         </td>
                       </motion.tr>
                     ))
