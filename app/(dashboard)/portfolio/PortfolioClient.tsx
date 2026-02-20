@@ -381,10 +381,8 @@ export default function MultiPortfolioTracker() {
       setShowSuggestions(false);
       
       // Refresh portfolio data to show updated values
-      const refreshToast = toast.loading('Refreshing portfolio...');
       await fetchPortfolioData(selectedPortfolio.id);
       await fetchPortfolios(true);
-      toast.dismiss(refreshToast);
       
     } catch (err) {
       toast.dismiss(loadingToast);
