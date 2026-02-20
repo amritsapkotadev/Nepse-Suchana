@@ -287,16 +287,41 @@ All endpoints return JSON responses in the following format:
 | POST | `/api/dividends` | Add dividend | Yes |
 | GET | `/api/health` | Health check | No |
 
-## Authentication Flow
+## 🔐 Authentication Flow
 
-1. **Register**: `POST /api/auth/register` with `{name, email, password}`
-2. **Login**: `POST /api/auth/login` with `{email, password}`
-   - Server returns JWT token and sets httpOnly cookie
-3. **Authenticated Requests**: Include token in header:
-   ```
-   Authorization: Bearer <token>
-   ```
-4. **Verification**: `lib/auth.ts` exports `verifyAuth()` function used in all protected routes
+```
+1. Register   POST /api/auth/register  { name, email, password }
+      ↓
+2. Login      POST /api/auth/login     { email, password }
+              ← JWT token (httpOnly cookie) + response body
+      ↓
+3. API calls  Authorization: Bearer <token>
+              (or automatically via cookie)
+      ↓
+4. Verify     lib/auth.ts → verifyAuth() used in all protected routes
+```
+
+---
+
+## 🧰 Frontend Utilities
+
+The frontend uses a `safeFetch` helper (`app/lib/api-utils.ts`) that handles auth headers and unwraps the `{ success, data }` envelope automatically:
+
+```typescript
+import { safeFetch } from '@/app/lib/api-utils';
+
+// Automatically includes auth headers and throws on errors
+const portfolios = await safeFetch('/api/portfolios');
+
+// POST example
+const newPortfolio = await safeFetch('/api/portfolios', {
+  method: 'POST',
+  body: JSON.stringify({ name: 'My Portfolio', initial_balance: 100000 })
+});
+```
+
+---
+
 
 ## Demo Trading Usage
 
@@ -320,17 +345,6 @@ curl -X POST http://localhost:3000/api/demotrading \
   }'
 ```
 
-## Frontend Integration
-
-The frontend uses a custom `safeFetch` utility (`app/lib/api-utils.ts`) that:
-- Automatically includes authentication headers
-- Unwraps `{success, data}` response format
-- Throws descriptive errors for failed requests
-
-```typescript
-import { safeFetch } from '@/app/lib/api-utils';
-
-const portfolios = await safeFetch<Portfolio[]>('/api/portfolios');
 ```
 
 ## Development Commands
