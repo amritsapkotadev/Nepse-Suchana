@@ -31,10 +31,9 @@ export async function DELETE(
     await deletePortfolio(user.id, parseInt(id));
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    const status = error.message === 'Cannot delete non-empty portfolio' ? 400 : 404;
     return NextResponse.json(
       { success: false, error: error.message },
-      { status }
+      { status: 404 }
     );
   }
 }

@@ -79,15 +79,23 @@ export async function getPortfolio(userId: number, portfolioId: number): Promise
 }
 
 export async function deletePortfolio(userId: number, portfolioId: number): Promise<void> {
-  const holdingResult = await query(
-    'SELECT COUNT(*) FROM portfolio_holdings WHERE portfolio_id = $1',
+  // First verify the portfolio exists and belongs to the user
+  const portfolioResult = await query(
+    'SELECT id FROM portfolios WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL',
+    [portfolioId, userId]
+  );
+  
+  if (portfolioResult.rows.length === 0) {
+    throw new Error('Portfolio not found');
+  }
+  
+  // Delete all holdings first (cascade delete)
+  await query(
+    'DELETE FROM portfolio_holdings WHERE portfolio_id = $1',
     [portfolioId]
   );
   
-  if (parseInt(holdingResult.rows[0].count) > 0) {
-    throw new Error('Cannot delete non-empty portfolio');
-  }
-  
+  // Then soft-delete the portfolio
   await query(
     'UPDATE portfolios SET deleted_at = NOW() WHERE id = $1 AND user_id = $2',
     [portfolioId, userId]
