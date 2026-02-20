@@ -359,6 +359,9 @@ export default function MultiPortfolioTracker() {
       setError("All fields are required with valid numbers");
       return;
     }
+    
+    const loadingToast = toast.loading('Adding stock...');
+    
     try {
       const newStock = await safeFetch<any>('/api/portfolio-holdings', {
         method: 'POST',
@@ -369,25 +372,25 @@ export default function MultiPortfolioTracker() {
           average_price: buyPrice
         })
       });
-      setPortfolioStocks(prev => [...prev, {
-        ...newStock,
-        buyPrice: Number(newStock.average_price),
-        dateAdded: new Date(newStock.created_at)
-      }]);
-      // Update portfolio holdings count
-      setPortfolios(prev => prev.map(p => 
-        p.id === selectedPortfolio.id 
-          ? { ...p, holdings_count: (p.holdings_count || 0) + 1 }
-          : p
-      ));
-      setSuccess("");
-      toast.success(`${form.transactionType} transaction added successfully!`);
+      
+      toast.dismiss(loadingToast);
+      toast.success(`${form.symbol.toUpperCase()} added successfully!`);
+      
       setShowStockModal(false);
       resetStockForm();
       setShowSuggestions(false);
+      
+      // Refresh portfolio data to show updated values
+      const refreshToast = toast.loading('Refreshing portfolio...');
+      await fetchPortfolioData(selectedPortfolio.id);
+      await fetchPortfolios(true);
+      toast.dismiss(refreshToast);
+      
     } catch (err) {
+      toast.dismiss(loadingToast);
       const errorMessage = err instanceof Error ? err.message : 'Failed to add stock';
       setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
