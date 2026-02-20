@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { FaChartLine, FaMoneyBillWave, FaHashtag, FaBuilding } from 'react-icons/fa';
 import { useAuth } from '@/components/AuthProvider';
@@ -36,84 +36,70 @@ export default function Dashboard() {
   const [stockPrices, setStockPrices] = useState<Record<string, StockPrice>>({});
   const [loading, setLoading] = useState(true);
   
-  // Cache for dashboard data
-  const dataCache = useRef<{
-    portfolios: Portfolio[];
-    holdings: PortfolioHolding[];
-    stockPrices: Record<string, StockPrice>;
-  } | null>(null);
+  // Track if we need to refresh data
+  const lastFetchTime = useRef<number>(0);
   const isFetching = useRef(false);
 
-  useEffect(() => {
-    async function fetchData() {
-      if (!user || isFetching.current) return;
-      
-      // Use cache if available
-      if (dataCache.current) {
-        setPortfolios(dataCache.current.portfolios);
-        setHoldings(dataCache.current.holdings);
-        setStockPrices(dataCache.current.stockPrices);
-        setLoading(false);
-        return;
-      }
-      
-      isFetching.current = true;
-      
-      try {
-        // Fetch portfolios first
-        const portfoliosRes = await fetch('/api/portfolios');
-        if (portfoliosRes.ok) {
-          const portfoliosResult = await portfoliosRes.json();
-          const portfoliosData = portfoliosResult.data || portfoliosResult;
-          setPortfolios(portfoliosData);
+  const fetchData = useCallback(async () => {
+    if (!user || isFetching.current) return;
+    
+    // Always fetch fresh data (remove caching to ensure new portfolios are shown)
+    isFetching.current = true;
+    
+    try {
+      // Fetch portfolios first
+      const portfoliosRes = await fetch('/api/portfolios');
+      if (portfoliosRes.ok) {
+        const portfoliosResult = await portfoliosRes.json();
+        const portfoliosData = portfoliosResult.data || portfoliosResult;
+        setPortfolios(portfoliosData);
+        
+        if (portfoliosData.length > 0) {
+          // Fetch holdings and stock prices in parallel
+          const [holdingsRes, stocksRes] = await Promise.all([
+            fetch(`/api/portfolio-holdings?portfolio_id=${portfoliosData[0].id}`),
+            fetch('/api/nepse-proxy', { cache: 'no-store' })
+          ]);
           
-          if (portfoliosData.length > 0) {
-            // Fetch holdings and stock prices in parallel
-            const [holdingsRes, stocksRes] = await Promise.all([
-              fetch(`/api/portfolio-holdings?portfolio_id=${portfoliosData[0].id}`),
-              fetch('/api/nepse-proxy', { cache: 'no-store' })
-            ]);
-            
-            let holdingsData: PortfolioHolding[] = [];
-            if (holdingsRes.ok) {
-              const holdingsResult = await holdingsRes.json();
-              holdingsData = holdingsResult.data || holdingsResult;
-              setHoldings(holdingsData);
-            }
-            
-            let priceMap: Record<string, StockPrice> = {};
-            if (stocksRes.ok) {
-              const stocksData = await stocksRes.json();
-              priceMap = {};
-              (stocksData.liveCompanyData || []).forEach((stock: { symbol: string; securityName: string; lastTradedPrice: number; change: number; percentageChange: number }) => {
-                priceMap[stock.symbol] = {
-                  symbol: stock.symbol,
-                  lastTradedPrice: stock.lastTradedPrice,
-                  change: stock.change,
-                  percentageChange: stock.percentageChange
-                };
-              });
-              setStockPrices(priceMap);
-              
-              // Store in cache
-              dataCache.current = {
-                portfolios: portfoliosData,
-                holdings: holdingsData,
-                stockPrices: priceMap
-              };
-            }
+          let holdingsData: PortfolioHolding[] = [];
+          if (holdingsRes.ok) {
+            const holdingsResult = await holdingsRes.json();
+            holdingsData = holdingsResult.data || holdingsResult;
+            setHoldings(holdingsData);
           }
+          
+          let priceMap: Record<string, StockPrice> = {};
+          if (stocksRes.ok) {
+            const stocksData = await stocksRes.json();
+            priceMap = {};
+            (stocksData.liveCompanyData || []).forEach((stock: { symbol: string; securityName: string; lastTradedPrice: number; change: number; percentageChange: number }) => {
+              priceMap[stock.symbol] = {
+                symbol: stock.symbol,
+                lastTradedPrice: stock.lastTradedPrice,
+                change: stock.change,
+                percentageChange: stock.percentageChange
+              };
+            });
+            setStockPrices(priceMap);
+          }
+        } else {
+          // Clear holdings if no portfolios
+          setHoldings([]);
+          setStockPrices({});
         }
-      } catch (err) {
-        console.error('Failed to fetch dashboard data:', err);
-      } finally {
-        isFetching.current = false;
-        setLoading(false);
       }
+      lastFetchTime.current = Date.now();
+    } catch (err) {
+      console.error('Failed to fetch dashboard data:', err);
+    } finally {
+      isFetching.current = false;
+      setLoading(false);
     }
-
-    fetchData();
   }, [user]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Calculate totals
   const totalInvestment = holdings.reduce((sum, h) => sum + (h.quantity * h.average_price), 0);
