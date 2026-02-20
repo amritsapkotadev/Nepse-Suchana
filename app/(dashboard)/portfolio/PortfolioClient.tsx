@@ -46,6 +46,17 @@ interface PortfolioStock {
   portfolio_id?: number;
 }
 
+interface Dividend {
+  id: number;
+  portfolio_id: number;
+  stock_symbol: string;
+  type: string;
+  value: number;
+  date: string;
+  notes?: string;
+  created_at?: Date;
+}
+
 export default function MultiPortfolioTracker() {
   // Multi-portfolio state
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
@@ -81,7 +92,7 @@ export default function MultiPortfolioTracker() {
   // UI states
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "holdings" | "transactions" | "analytics">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "holdings" | "dividends" | "transactions" | "analytics">("holdings");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -97,6 +108,19 @@ export default function MultiPortfolioTracker() {
   const [allStocks, setAllStocks] = useState<Stock[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showPortfolioMenu, setShowPortfolioMenu] = useState<number | null>(null);
+  
+  // Dividend states
+  const [dividends, setDividends] = useState<Dividend[]>([]);
+  const [showDividendModal, setShowDividendModal] = useState(false);
+  const [dividendForm, setDividendForm] = useState({
+    stock_symbol: "",
+    type: "Cash" as "Cash" | "Bonus" | "Right",
+    value: "",
+    date: new Date().toISOString().split('T')[0],
+    notes: ""
+  });
+  const [dividendStockSuggestions, setDividendStockSuggestions] = useState<PortfolioStock[]>([]);
+  const [showDividendSuggestions, setShowDividendSuggestions] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const allStocksRef = useRef<Stock[]>([]);
@@ -219,22 +243,99 @@ export default function MultiPortfolioTracker() {
     }
   }, []);
 
+  // Fetch dividends for a portfolio
+  const fetchDividends = useCallback(async (portfolioId: number) => {
+    try {
+      const data = await safeFetch<Dividend[]>(`/api/dividends?portfolio_id=${portfolioId}`);
+      setDividends(data);
+    } catch (err) {
+      console.error('Failed to fetch dividends:', err);
+      setDividends([]);
+    }
+  }, []);
+
+  // Add dividend
+  const handleAddDividend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPortfolio) return;
+
+    const loadingToast = toast.loading('Adding dividend...');
+
+    try {
+      await safeFetch('/api/dividends', {
+        method: 'POST',
+        body: JSON.stringify({
+          portfolio_id: selectedPortfolio.id,
+          stock_symbol: dividendForm.stock_symbol.toUpperCase(),
+          type: dividendForm.type,
+          value: parseFloat(dividendForm.value) || 0,
+          date: dividendForm.date,
+          notes: dividendForm.notes || null
+        })
+      });
+
+      toast.dismiss(loadingToast);
+      toast.success(`${dividendForm.type} dividend added successfully!`);
+
+      setShowDividendModal(false);
+      setDividendForm({
+        stock_symbol: "",
+        type: "Cash",
+        value: "",
+        date: new Date().toISOString().split('T')[0],
+        notes: ""
+      });
+
+      // Refresh dividends
+      await fetchDividends(selectedPortfolio.id);
+    } catch (err) {
+      toast.dismiss(loadingToast);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add dividend';
+      toast.error(errorMessage);
+    }
+  };
+
+  // Handle dividend stock symbol search
+  const handleDividendStockSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value.toUpperCase();
+    setDividendForm(prev => ({ ...prev, stock_symbol: query }));
+    
+    if (query.length > 0) {
+      const filtered = portfolioStocks.filter(s => 
+        s.symbol.toUpperCase().includes(query) ||
+        s.companyName.toUpperCase().includes(query)
+      );
+      setDividendStockSuggestions(filtered);
+      setShowDividendSuggestions(true);
+    } else {
+      setDividendStockSuggestions([]);
+      setShowDividendSuggestions(false);
+    }
+  };
+
+  const selectDividendStock = (stock: PortfolioStock) => {
+    setDividendForm(prev => ({ ...prev, stock_symbol: stock.symbol }));
+    setShowDividendSuggestions(false);
+    setDividendStockSuggestions([]);
+  };
+
   // Fetch portfolios on mount
   useEffect(() => {
-    if (portfoliosCache.current) {
-      setPortfolios(portfoliosCache.current);
-      if (portfoliosCache.current.length > 0) {
-        setSelectedPortfolio(portfoliosCache.current[0]);
-        fetchPortfolioData(portfoliosCache.current[0].id);
-      }
-      setIsLoading(prev => ({ ...prev, portfolios: false }));
-    } else {
-      fetchPortfolios(true);
-    }
     if (allStocks.length === 0) {
       fetchAllStocks();
     }
+    
+    // Always fetch fresh data on mount to avoid stale data
+    fetchPortfolios(true);
   }, []);
+
+  // Fetch holdings when selected portfolio changes
+  useEffect(() => {
+    if (selectedPortfolio) {
+      fetchPortfolioData(selectedPortfolio.id);
+      fetchDividends(selectedPortfolio.id);
+    }
+  }, [selectedPortfolio?.id]);
 
   // Create new portfolio
   const handleCreatePortfolio = async (e: React.FormEvent) => {
@@ -600,6 +701,7 @@ export default function MultiPortfolioTracker() {
               onClick={() => {
                 setSelectedPortfolio(portfolio);
                 fetchPortfolioData(portfolio.id);
+                fetchDividends(portfolio.id);
               }}
             >
               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -867,10 +969,58 @@ export default function MultiPortfolioTracker() {
                 </span>
               </div>
             </motion.div>
+
+            {/* Dividends Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-5 text-white shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm">
+                  <FaGift className="w-6 h-6" />
+                </div>
+              </div>
+              <p className="text-sm font-medium opacity-90 mb-1">Total Dividends</p>
+              <p className="text-2xl font-bold">
+                Rs. {dividends.reduce((sum, d) => sum + (d.type.toLowerCase() === 'cash' ? Number(d.value) : 0), 0).toLocaleString('en-NP', { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs opacity-75 mt-1">
+                {dividends.filter(d => d.type.toLowerCase() === 'cash').length} cash, {dividends.filter(d => d.type.toLowerCase() === 'bonus').length} bonus, {dividends.filter(d => d.type.toLowerCase() === 'right').length} right
+              </p>
+            </motion.div>
           </div>
         )}
         
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('holdings')}
+            className={`px-6 py-3 rounded-xl font-medium transition-all ${
+              activeTab === 'holdings'
+                ? 'bg-blue-600 text-white shadow-lg'
+                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+            }`}
+          >
+            <FaChartLine className="inline mr-2" />
+            Holdings ({filteredStocks.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('dividends')}
+            className={`px-6 py-3 rounded-xl font-medium transition-all ${
+              activeTab === 'dividends'
+                ? 'bg-purple-600 text-white shadow-lg'
+                : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+            }`}
+          >
+            <FaGift className="inline mr-2" />
+            Dividends ({dividends.length})
+          </button>
+        </div>
+
         {/* Holdings Table */}
+        {activeTab === 'holdings' && (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1009,6 +1159,120 @@ export default function MultiPortfolioTracker() {
             </table>
           </div>
         </div>
+        )}
+
+        {/* Dividends Section */}
+        {activeTab === 'dividends' && (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-indigo-50">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Dividend History ({dividends.length})
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Record dividends, bonus shares, and right shares
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowDividendModal(true)}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
+                >
+                  <FaPlusCircle className="mr-2" />
+                  Add Dividend
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Stock
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Value
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Notes
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {dividends.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center">
+                        <div className="text-center py-12">
+                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                            <FaGift className="w-8 h-8 text-gray-400" />
+                          </div>
+                          <h4 className="text-gray-500 font-medium mb-2">No dividends recorded</h4>
+                          <p className="text-gray-400 text-sm mb-4">
+                            Record cash dividends, bonus shares, or right shares
+                          </p>
+                          <button
+                            onClick={() => setShowDividendModal(true)}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            Add First Dividend
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    dividends.map((dividend) => (
+                      <motion.tr
+                        key={dividend.id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-900">
+                            {new Date(dividend.date).toLocaleDateString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="font-bold text-gray-900">
+                            {dividend.stock_symbol}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            dividend.type.toLowerCase() === 'cash'
+                              ? 'bg-green-100 text-green-700'
+                              : dividend.type.toLowerCase() === 'bonus'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {dividend.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="font-medium text-gray-900">
+                            {dividend.type.toLowerCase() === 'cash' ? `Rs. ${Number(dividend.value).toFixed(2)}` : `${dividend.value} shares`}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-sm text-gray-500">
+                            {dividend.notes || '-'}
+                          </span>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -1607,6 +1871,214 @@ export default function MultiPortfolioTracker() {
                       resetStockForm();
                     }}
                     className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200:bg-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Dividend Modal */}
+      <AnimatePresence>
+        {showDividendModal && selectedPortfolio && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowDividendModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 sm:p-6 border-b border-gray-100">
+                <div className="flex justify-between items-start">
+                  <div className="pr-4">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+                      Record Dividend
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                      Add cash dividend, bonus shares, or right shares
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowDividendModal(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  >
+                    <FaTimes className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleAddDividend} className="p-4 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="relative">
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                      Stock Symbol *
+                    </label>
+                    <input
+                      type="text"
+                      value={dividendForm.stock_symbol}
+                      onChange={handleDividendStockSearch}
+                      onFocus={() => {
+                        // Show all portfolio stocks when focused
+                        if (portfolioStocks.length > 0) {
+                          setDividendStockSuggestions(portfolioStocks);
+                          setShowDividendSuggestions(true);
+                        }
+                      }}
+                      onBlur={() => {
+                        // Hide dropdown after a short delay to allow clicking
+                        setTimeout(() => setShowDividendSuggestions(false), 200);
+                      }}
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm sm:text-base"
+                      placeholder="Click to see available stocks..."
+                      required
+                    />
+                    
+                    <AnimatePresence>
+                      {showDividendSuggestions && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="absolute z-50 w-full mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl overflow-hidden"
+                        >
+                          <div className="max-h-48 overflow-y-auto">
+                            {dividendStockSuggestions.length === 0 ? (
+                              <div className="px-4 py-3 text-gray-500 text-sm">No stocks in portfolio</div>
+                            ) : (
+                              dividendStockSuggestions.map((stock) => (
+                                <div
+                                  key={stock.id}
+                                  className="px-4 py-3 hover:bg-purple-50 cursor-pointer border-b last:border-b-0 border-gray-100 transition-colors"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault(); // Prevent blur from closing before click
+                                    selectDividendStock(stock);
+                                  }}
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <div>
+                                      <span className="font-bold text-purple-600">{stock.symbol}</span>
+                                      <p className="text-sm text-gray-600 truncate">{stock.companyName}</p>
+                                    </div>
+                                    <span className="text-xs text-gray-500">{stock.quantity} shares</span>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                      Dividend Type *
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDividendForm(prev => ({ ...prev, type: 'Cash' }))}
+                        className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 text-sm ${
+                          dividendForm.type === 'Cash'
+                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        <FaMoneyBillWave className="w-4 h-4" />
+                        <span>Cash</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDividendForm(prev => ({ ...prev, type: 'Bonus' }))}
+                        className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 text-sm ${
+                          dividendForm.type === 'Bonus'
+                            ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        <FaGift className="w-4 h-4" />
+                        <span>Bonus</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDividendForm(prev => ({ ...prev, type: 'Right' }))}
+                        className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 text-sm ${
+                          dividendForm.type === 'Right'
+                            ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        <FaChartLine className="w-4 h-4" />
+                        <span>Right</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                      {dividendForm.type === 'Cash' ? 'Amount (Rs.) *' : 'Shares *'}
+                    </label>
+                    <input
+                      type="number"
+                      value={dividendForm.value}
+                      onChange={(e) => setDividendForm(prev => ({ ...prev, value: e.target.value }))}
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm sm:text-base"
+                      placeholder={dividendForm.type === 'Cash' ? 'Enter amount' : 'Enter shares'}
+                      min="0"
+                      step={dividendForm.type === 'Cash' ? '0.01' : '1'}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                      Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={dividendForm.date}
+                      onChange={(e) => setDividendForm(prev => ({ ...prev, date: e.target.value }))}
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm sm:text-base"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
+                      Notes (Optional)
+                    </label>
+                    <textarea
+                      value={dividendForm.notes}
+                      onChange={(e) => setDividendForm(prev => ({ ...prev, notes: e.target.value }))}
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all text-sm sm:text-base"
+                      placeholder="Any additional information..."
+                      rows={2}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-6 sm:mt-8">
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium rounded-xl hover:shadow-lg transition-all flex items-center justify-center shadow-md text-sm sm:text-base"
+                  >
+                    <FaGift className="mr-2 w-4 h-4" />
+                    Record Dividend
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowDividendModal(false)}
+                    className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors text-sm sm:text-base"
                   >
                     Cancel
                   </button>

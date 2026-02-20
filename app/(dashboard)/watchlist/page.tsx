@@ -268,7 +268,7 @@ export default function Watchlist() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="mb-6">
+        <div>
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Stock Watchlist
           </h1>
@@ -276,18 +276,9 @@ export default function Watchlist() {
             Track and manage your favorite stocks
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-semibold text-sm shadow-lg hover:shadow-xl transition-all"
-          >
-            <FaPlus className="w-4 h-4" /> 
-            <span className="hidden sm:inline">Add Stock</span>
-          </button>
-        </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-2">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded-xl p-4 shadow border border-slate-200">
@@ -353,19 +344,10 @@ export default function Watchlist() {
               </button>
             )}
           </div>
-          <div className="flex gap-2">
-            <div className="relative">
-              <button
-                className="px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-700"
-              >
-                <FaFilter className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Sort Controls */}
-        <div className="mb-6 flex flex-wrap gap-2">
+        <div className="mb-6 flex flex-wrap items-center gap-2">
           {(['symbol', 'price', 'change', 'target', 'added'] as SortField[]).map((field) => (
             <button
               key={field}
@@ -380,6 +362,14 @@ export default function Watchlist() {
               </div>
             </button>
           ))}
+          <div className="flex-1"></div>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold text-sm shadow-md hover:shadow-lg transition-all"
+          >
+            <FaPlus className="w-4 h-4" />
+            <span>Add Stock</span>
+          </button>
         </div>
 
         {/* Add/Edit Stock Form */}

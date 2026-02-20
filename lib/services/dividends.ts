@@ -5,7 +5,7 @@ export interface Dividend {
   portfolio_id: number;
   stock_symbol: string;
   type: string;
-  value: number;
+  value: number | string;
   date: string;
   notes?: string;
   created_at?: Date;
