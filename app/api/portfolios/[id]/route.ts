@@ -28,12 +28,14 @@ export async function PUT(
   try {
     const user = await verifyAuth(req);
     const { id } = await params;
-    const { name, description } = await req.json();
+    const { name, description, initial_balance } = await req.json();
     
-    const updatedPortfolio = await updatePortfolio(user.id, parseInt(id), {
-      name,
-      description
-    });
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (description !== undefined) updates.description = description;
+    if (initial_balance !== undefined) updates.initial_balance = parseFloat(initial_balance) || 0;
+    
+    const updatedPortfolio = await updatePortfolio(user.id, parseInt(id), updates);
     
     return NextResponse.json({ success: true, data: updatedPortfolio });
   } catch (error: any) {

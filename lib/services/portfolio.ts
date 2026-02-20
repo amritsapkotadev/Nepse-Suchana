@@ -81,7 +81,7 @@ export async function getPortfolio(userId: number, portfolioId: number): Promise
 export async function updatePortfolio(
   userId: number,
   portfolioId: number,
-  updates: { name?: string; description?: string }
+  updates: { name?: string; description?: string; initial_balance?: number }
 ): Promise<Portfolio> {
   // Check if portfolio exists and belongs to user
   const existingResult = await query(
@@ -108,10 +108,11 @@ export async function updatePortfolio(
   const result = await query(
     `UPDATE portfolios 
      SET name = COALESCE($3, name), 
-         description = COALESCE($4, description)
+         description = COALESCE($4, description),
+         initial_balance = COALESCE($5, initial_balance)
      WHERE id = $1 AND user_id = $2 
      RETURNING *`,
-    [portfolioId, userId, updates.name || null, updates.description || null]
+    [portfolioId, userId, updates.name || null, updates.description || null, updates.initial_balance ?? null]
   );
   
   return result.rows[0];

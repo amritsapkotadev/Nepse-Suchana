@@ -74,7 +74,8 @@ export default function MultiPortfolioTracker() {
   
   const [editPortfolioForm, setEditPortfolioForm] = useState({
     name: "",
-    description: ""
+    description: "",
+    initial_balance: ""
   });
   
   // UI states
@@ -289,12 +290,13 @@ export default function MultiPortfolioTracker() {
         body: JSON.stringify(editPortfolioForm)
       });
       
-      // Preserve holdings_count and total_value when updating
+      // Preserve holdings_count and total_value, but use new initial_balance
       const mergedPortfolio = {
         ...selectedPortfolio,
         ...updatedPortfolio,
         holdings_count: selectedPortfolio.holdings_count,
-        total_value: selectedPortfolio.total_value
+        total_value: selectedPortfolio.total_value,
+        initial_balance: updatedPortfolio.initial_balance ?? selectedPortfolio.initial_balance
       };
       
       setPortfolios(prev => prev.map(p => 
@@ -625,7 +627,8 @@ export default function MultiPortfolioTracker() {
                             e.stopPropagation();
                             setEditPortfolioForm({
                               name: portfolio.name,
-                              description: portfolio.description || ""
+                              description: portfolio.description || "",
+                              initial_balance: portfolio.initial_balance?.toString() || ""
                             });
                             setShowEditModal(true);
                             setShowPortfolioMenu(null);
@@ -1264,6 +1267,23 @@ export default function MultiPortfolioTracker() {
                       rows={3}
                       maxLength={200}
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Initial Balance
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 font-medium">Rs.</span>
+                      <input
+                        type="number"
+                        value={editPortfolioForm.initial_balance}
+                        onChange={(e) => setEditPortfolioForm(prev => ({ ...prev, initial_balance: e.target.value }))}
+                        className="w-full px-4 py-3 pl-12 bg-gray-50 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
                   </div>
                 </div>
 
