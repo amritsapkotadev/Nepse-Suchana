@@ -17,6 +17,61 @@ Nepse-Suchana provides real-time NEPSE stock data, portfolio management with mul
 | Authentication | JWT with httpOnly cookies |
 | External Data | NEPSE API (via sharepulse proxy) |
 
+## Technology
+
+### 🔹 Frontend
+
+* **Next.js 16 (App Router)**
+  Used for full-stack React framework with file-based routing, server components, and API route handling.
+
+* **React 19**
+  Handles UI rendering using component-based architecture and modern hooks.
+
+* **TypeScript**
+  Provides static type safety, better developer experience, and early error detection.
+
+* **Tailwind CSS**
+  Utility-first CSS framework for building responsive and modern UI designs efficiently.
+
+### 🔹 Backend
+
+* **Node.js Runtime (via Next.js API Routes)**
+  Executes server-side logic including authentication, portfolio management, and trading logic.
+
+* **Next.js API Route Handlers**
+  Provide REST-style backend endpoints without needing a separate Express server.
+
+### 🔹 Database
+
+* **PostgreSQL**
+  Relational database used for storing users, portfolios, transactions, dividends, and watchlists.
+
+* **pg (node-postgres)**
+  Connection pooling and parameterized queries for secure database communication.
+
+### 🔹 Authentication & Security
+
+* **JSON Web Token (JWT)**
+  Used for stateless user authentication.
+
+* **httpOnly Cookies**
+  Secure token storage preventing XSS-based token theft.
+
+### 🔹 External Data Integration
+
+* **NEPSE API (via Sharepulse Proxy)**
+  Fetches real-time stock market data from Nepal Stock Exchange.
+
+### 🔹 Development Tools
+
+* **npm (Node Package Manager)**
+  Manages project dependencies.
+
+* **ESLint**
+  Maintains code quality and consistency.
+
+
+
 ## Features
 
 - **User Authentication** - Secure JWT-based login/registration with httpOnly cookie storage
@@ -82,7 +137,7 @@ nepse-suchana/
 
 ```bash
 # Install dependencies
-npm install
+npm install --save-dev @types/react @types/react-dom
 ```
 
 ### Environment Configuration
