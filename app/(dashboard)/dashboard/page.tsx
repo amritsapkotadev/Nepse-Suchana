@@ -68,18 +68,26 @@ export default function Dashboard() {
           setPortfolios(portfoliosData);
           
           if (portfoliosData.length > 0) {
-            // Fetch holdings and stock prices in parallel
-            const [holdingsRes, stocksRes] = await Promise.all([
-              fetch(`/api/portfolio-holdings?portfolio_id=${portfoliosData[0].id}`),
+            // Fetch holdings from ALL portfolios and stock prices in parallel
+            const holdingsPromises = portfoliosData.map((p: Portfolio) =>
+              fetch(`/api/portfolio-holdings?portfolio_id=${p.id}`)
+            );
+            
+            const [holdingsResults, stocksRes] = await Promise.all([
+              Promise.all(holdingsPromises),
               fetch('/api/nepse-proxy', { cache: 'no-store' })
             ]);
             
-            let holdingsData: PortfolioHolding[] = [];
-            if (holdingsRes.ok) {
-              const holdingsResult = await holdingsRes.json();
-              holdingsData = holdingsResult.data || holdingsResult;
-              setHoldings(holdingsData);
+            // Aggregate holdings from all portfolios
+            let allHoldings: PortfolioHolding[] = [];
+            for (const res of holdingsResults) {
+              if (res.ok) {
+                const result = await res.json();
+                const holdings = result.data || result;
+                allHoldings = [...allHoldings, ...holdings];
+              }
             }
+            setHoldings(allHoldings);
             
             let priceMap: Record<string, StockPrice> = {};
             if (stocksRes.ok) {
@@ -98,7 +106,7 @@ export default function Dashboard() {
               // Store in cache
               dataCache.current = {
                 portfolios: portfoliosData,
-                holdings: holdingsData,
+                holdings: allHoldings,
                 stockPrices: priceMap
               };
             }
