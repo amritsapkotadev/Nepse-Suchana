@@ -30,6 +30,7 @@ export default function DemoTrading() {
   const [form, setForm] = useState({ symbol: "", companyName: "", quantity: "", buyPrice: "" });
   const [profitLoss, setProfitLoss] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hasAccount, setHasAccount] = useState(false);
   type StockData = { symbol: string; securityName: string; lastTradedPrice?: number; closingPrice?: number; ltp?: number };
   const [suggestions, setSuggestions] = useState<StockData[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -43,10 +44,42 @@ export default function DemoTrading() {
       });
       if (res.ok) {
         const data = await res.json();
-        setAccount(data.data);
+        if (data.data) {
+          setAccount(data.data);
+          setHasAccount(true);
+        } else {
+          setHasAccount(false);
+        }
+      } else if (res.status === 401) {
+        setHasAccount(false);
       }
     } catch (error) {
       console.error("Failed to fetch demo account:", error);
+      setHasAccount(false);
+    }
+  };
+
+  const createAccount = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/demotrading', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAccount(data.data);
+        setHasAccount(true);
+        toast.success("Demo trading account created!");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to create account");
+      }
+    } catch {
+      toast.error("Failed to create account");
     }
   };
 
@@ -155,7 +188,52 @@ export default function DemoTrading() {
     );
   }
 
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-8">
+        <h1 className="text-3xl font-bold mb-6 text-slate-900">Demo Trading</h1>
+        <div className="max-w-md mx-auto mt-20">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 text-center">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+              <FaChartLine className="w-10 h-10 text-blue-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">Login Required</h2>
+            <p className="text-slate-600 mb-6">
+              Please login to access demo trading and practice your trading skills.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const trades = account?.transactions || [];
+
+  if (!hasAccount) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-8">
+        <h1 className="text-3xl font-bold mb-6 text-slate-900">Demo Trading</h1>
+        <div className="max-w-md mx-auto mt-20">
+          <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 text-center">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+              <FaChartLine className="w-10 h-10 text-blue-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">Create Demo Trading Account</h2>
+            <p className="text-slate-600 mb-6">
+              Start practicing your trading skills with Rs. 10,00,000 virtual balance. No real money involved.
+            </p>
+            <button
+              onClick={createAccount}
+              className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center mx-auto"
+            >
+              <FaPlusCircle className="mr-2" />
+              Create Account
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-8">

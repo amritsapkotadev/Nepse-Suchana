@@ -109,10 +109,10 @@ export async function deleteDemoTradingTransaction(userId: number, transactionId
 
 export async function getDemoTradingTransactions(demotradingId: number, userId: number): Promise<DemoTradingTransaction[]> {
   const result = await query(
-    `SELECT t.* FROM demotrading_transactions t
-     JOIN demotrading d ON t.demotrading_id = d.id
-     WHERE t.demotrading_id = $1 AND d.user_id = $2
-     ORDER BY t.created_at DESC`,
+    `SELECT demotrading_transactions.* FROM demotrading_transactions
+      JOIN demotrading ON demotrading_transactions.demotrading_id = demotrading.id
+      WHERE demotrading_transactions.demotrading_id = $1 AND demotrading.user_id = $2
+      ORDER BY demotrading_transactions.id DESC`,
     [demotradingId, userId]
   );
   

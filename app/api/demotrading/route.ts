@@ -23,16 +23,15 @@ export async function GET(req: NextRequest) {
       });
     } catch (err: any) {
       if (err.message === 'Demo trading account not found') {
-        const account = await createDemoTradingAccount(user.id);
         return NextResponse.json({ 
           success: true, 
-          data: { ...account, transactions: [] } 
+          data: null 
         });
       }
       throw err;
     }
   } catch (error: any) {
-    const status = error.message.includes('No token') || error.message.includes('Invalid') ? 401 : 404;
+    const status = error.message.includes('No token') || error.message.includes('Invalid') || error.message.includes('not found') ? 401 : 500;
     return NextResponse.json(
       { success: false, error: error.message },
       { status }
@@ -43,7 +42,21 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await verifyAuth(req);
-    const body = await req.json();
+    const contentType = req.headers.get('content-type');
+    
+    if (!contentType || !contentType.includes('application/json')) {
+      const account = await createDemoTradingAccount(user.id);
+      return NextResponse.json({ success: true, data: account }, { status: 201 });
+    }
+    
+    const bodyText = await req.text();
+    
+    if (!bodyText || bodyText.trim() === '') {
+      const account = await createDemoTradingAccount(user.id);
+      return NextResponse.json({ success: true, data: account }, { status: 201 });
+    }
+    
+    const body = JSON.parse(bodyText);
     
     if (body.stock_symbol && body.side && body.quantity && body.price) {
       const { demotrading_id, stock_symbol, side, quantity, price } = body;
