@@ -6,81 +6,33 @@ A comprehensive full-stack web application for tracking Nepal Stock Exchange (NE
 
 Nepse-Suchana provides real-time NEPSE stock data, portfolio management with multiple portfolios per user, personal watchlists, and a demo trading platform with Rs. 1 Crore virtual balance for practice trading.
 
-## Tech Stack
+## ✨ What It Does
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js 16 (App Router), React 19, TypeScript |
-| Styling | Tailwind CSS |
-| Backend | Next.js API Routes (Node.js Runtime) |
-| Database | PostgreSQL |
-| Authentication | JWT with httpOnly cookies |
-| External Data | NEPSE API (via sharepulse proxy) |
+| Feature | Description |
+|---------|-------------|
+| 🔐 **Authentication** | Secure JWT login/registration with httpOnly cookie storage |
+| 📊 **Portfolio Management** | Create up to 5 portfolios with weighted average price tracking |
+| 💹 **Demo Trading** | Practice with Rs. 1 Crore virtual balance — no real money risk |
+| 👁️ **Watchlist** | Personal stock watchlist with live prices |
+| 💰 **Dividend Tracking** | Record cash dividends, bonus shares, and right shares |
+| 📡 **Live NEPSE Data** | Real-time stock prices via NEPSE API proxy with auto-refresh |
+| 📱 **Responsive UI** | Modern design with dark mode support |
 
-## Technology
+---
 
-### 🔹 Frontend
+##🛠️ Tech Stack
 
-* **Next.js 16 (App Router)**
-  Used for full-stack React framework with file-based routing, server components, and API route handling.
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Frontend** | Next.js 16 (App Router), React 19 | UI rendering, routing |
+| **Language** | TypeScript | Type safety, developer experience |
+| **Styling** | Tailwind CSS | Responsive, utility-first UI |
+| **Backend** | Next.js API Routes (Node.js) | REST endpoints, server logic |
+| **Database** | PostgreSQL + node-postgres | Data persistence, connection pooling |
+| **Auth** | JWT + httpOnly Cookies | Stateless auth, XSS protection |
+| **Market Data** | NEPSE API (Sharepulse proxy) | Real-time stock prices |
 
-* **React 19**
-  Handles UI rendering using component-based architecture and modern hooks.
-
-* **TypeScript**
-  Provides static type safety, better developer experience, and early error detection.
-
-* **Tailwind CSS**
-  Utility-first CSS framework for building responsive and modern UI designs efficiently.
-
-### 🔹 Backend
-
-* **Node.js Runtime (via Next.js API Routes)**
-  Executes server-side logic including authentication, portfolio management, and trading logic.
-
-* **Next.js API Route Handlers**
-  Provide REST-style backend endpoints without needing a separate Express server.
-
-### 🔹 Database
-
-* **PostgreSQL**
-  Relational database used for storing users, portfolios, transactions, dividends, and watchlists.
-
-* **pg (node-postgres)**
-  Connection pooling and parameterized queries for secure database communication.
-
-### 🔹 Authentication & Security
-
-* **JSON Web Token (JWT)**
-  Used for stateless user authentication.
-
-* **httpOnly Cookies**
-  Secure token storage preventing XSS-based token theft.
-
-### 🔹 External Data Integration
-
-* **NEPSE API (via Sharepulse Proxy)**
-  Fetches real-time stock market data from Nepal Stock Exchange.
-
-### 🔹 Development Tools
-
-* **npm (Node Package Manager)**
-  Manages project dependencies.
-
-* **ESLint**
-  Maintains code quality and consistency.
-
-
-
-## Features
-
-- **User Authentication** - Secure JWT-based login/registration with httpOnly cookie storage
-- **Portfolio Management** - Create up to 5 portfolios per user with weighted average price tracking
-- **Demo Trading** - Virtual trading account with Rs. 1 Crore balance, buy/sell transactions
-- **Personal Watchlist** - Custom stock watchlist per user with live prices
-- **Dividend Tracking** - Record and track cash dividends, bonus shares, and right shares
-- **Live NEPSE Data** - Real-time stock prices via NEPSE API proxy with auto-refresh
-- **Responsive UI** - Modern design with dark mode support
+---
 
 ## Project Structure
 
