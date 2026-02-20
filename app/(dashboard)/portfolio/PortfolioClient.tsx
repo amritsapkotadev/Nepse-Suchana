@@ -106,7 +106,6 @@ export default function MultiPortfolioTracker() {
   const [sortConfig, setSortConfig] = useState({ key: "dateAdded", direction: "desc" });
   const [filterSymbol, setFilterSymbol] = useState("");
   const [allStocks, setAllStocks] = useState<Stock[]>([]);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showPortfolioMenu, setShowPortfolioMenu] = useState<number | null>(null);
   
   // Dividend states
@@ -632,13 +631,6 @@ export default function MultiPortfolioTracker() {
     (stock.companyName && stock.companyName.toLowerCase().includes(filterSymbol.toLowerCase()))
   );
 
-  // Copy portfolio ID
-  const copyPortfolioId = (id: number) => {
-    navigator.clipboard.writeText(id.toString());
-    setCopiedId(id.toString());
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
   // Clear messages
   const clearMessages = () => {
     setError("");
@@ -747,30 +739,10 @@ export default function MultiPortfolioTracker() {
                             setShowDeleteConfirm(true);
                             setShowPortfolioMenu(null);
                           }}
-                          className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50:bg-red-900/20 flex items-center"
+                          className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50:bg-red-900/20 flex items-center rounded-b-xl"
                         >
                           <FaTrash className="mr-3" />
                           Delete Portfolio
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyPortfolioId(portfolio.id);
-                            setShowPortfolioMenu(null);
-                          }}
-                          className="w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-50:bg-gray-700 flex items-center rounded-b-xl"
-                        >
-                          {copiedId === portfolio.id.toString() ? (
-                            <>
-                              <FaCheck className="mr-3 text-green-500" />
-                              Copied!
-                            </>
-                          ) : (
-                            <>
-                              <FaCopy className="mr-3 text-gray-500" />
-                              Copy ID
-                            </>
-                          )}
                         </button>
                       </motion.div>
                     )}
